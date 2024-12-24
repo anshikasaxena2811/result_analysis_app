@@ -72,6 +72,6 @@ def plot_and_embed_graph(csv_path):
 
         print(f"Comparison graph saved and embedded in {csv_path.replace('.csv', '.xlsx')}")
 
-# Example usage:
+# Example usage:j
 csv_file_path = "assets/csv_files/average_marks_file.csv"
 plot_and_embed_graph(csv_file_path)
