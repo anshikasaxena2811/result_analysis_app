@@ -16,24 +16,37 @@ def plot_and_embed_graph(csv_path):
     total_avg = df['Total_Average']
     
     # Create a fancy bar plot for comparison
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(12, 6))
     
     # Set the width of the bars
     bar_width = 0.25
     index = np.arange(len(course_codes))
     
     # Create the bars for each average category
-    ax.bar(index - bar_width, internal_avg, bar_width, label='Internal Average', color='skyblue')
-    ax.bar(index, external_avg, bar_width, label='External Average', color='salmon')
-    ax.bar(index + bar_width, total_avg, bar_width, label='Total Average', color='lightgreen')
+    bars_internal = ax.bar(index - bar_width, internal_avg, bar_width, label='Internal Average', color='skyblue')
+    bars_external = ax.bar(index, external_avg, bar_width, label='External Average', color='salmon')
+    bars_total = ax.bar(index + bar_width, total_avg, bar_width, label='Total Average', color='lightgreen')
     
     # Add labels, title, and customize the plot
     ax.set_xlabel('Course Code', fontsize=12)
     ax.set_ylabel('Average Marks', fontsize=12)
     ax.set_title('Comparison of Internal, External, and Total Averages', fontsize=14)
     ax.set_xticks(index)
-    ax.set_xticklabels(course_codes, rotation=45, ha='right')
-    ax.legend()
+    ax.set_xticklabels(course_codes, rotation=45, ha='center')
+    ax.legend(fontsize='small', loc='upper left')
+
+    # Add values on top of the bars
+    for bar in bars_internal:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.1f}', ha='center', va='bottom', fontsize=9)
+
+    for bar in bars_external:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.1f}', ha='center', va='bottom', fontsize=9)
+
+    for bar in bars_total:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.1f}', ha='center', va='bottom', fontsize=9)
     
     # Save the plot as an image file
     output_dir = os.path.dirname(csv_path)
