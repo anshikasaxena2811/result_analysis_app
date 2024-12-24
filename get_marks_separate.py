@@ -71,8 +71,3 @@ def get_data(file_path, identifier):
     # Save the CSV
     df1.to_csv(output_file_path, index=False)
     print(f"Data saved to {output_file_path}")
-
-# Example calls
-get_data(r"assets\resultData.xlsx", "T")
-get_data(r"assets\resultData.xlsx", "I")
-get_data(r"assets\resultData.xlsx", "E")
