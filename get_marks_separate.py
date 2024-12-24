@@ -1,13 +1,11 @@
 import pandas as pd
 import os
 
-# Global counter to track function runs
-
 def get_data(file_path, identifier):
-
     identifier = identifier.upper()
 
-    file_path = file_path.replace("\\", "\\\\")
+    # Normalize the file path to handle different OS path conventions
+    file_path = os.path.normpath(file_path)
 
     print("file path =>", file_path)
 
@@ -62,12 +60,17 @@ def get_data(file_path, identifier):
         df1 = df1.loc[:, ~df1.columns.str.contains("-")]
 
     # Create the output directory if it doesn't exist
-    output_dir = "assets\\csv_files"
+    output_dir = os.path.join("assets", "csv_files")
     os.makedirs(output_dir, exist_ok=True)
 
     # Generate unique file name
-    output_file_path = f"{output_dir}\\output_{identifier}.csv"
+    output_file_path = os.path.join(output_dir, f"output_{identifier}.csv")
 
     # Save the CSV
     df1.to_csv(output_file_path, index=False)
     print(f"Data saved to {output_file_path}")
+
+
+get_data(r"assets/resultData.xlsx", "T")
+get_data(r"assets/resultData.xlsx", "I")
+get_data(r"assets/resultData.xlsx", "E")

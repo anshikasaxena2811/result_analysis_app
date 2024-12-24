@@ -1,3 +1,5 @@
 ipykernel
 numpy
 openpyxl
+seaborn
+matplotlib
