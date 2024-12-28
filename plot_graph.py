@@ -4,16 +4,21 @@ import os
 import matplotlib.pyplot as plt
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 
-def plot_and_embed_graph(csv_path):
-    # Load the CSV file with data
-    df = pd.read_csv(csv_path)
-    
-    # Extract relevant data (Course_Code, Internal_Average, External_Average, and Total_Average)
-    course_codes = df['Course_Code']
-    internal_avg = df['Internal_Average']
-    external_avg = df['External_Average']
-    total_avg = df['Total_Average']
+def plot_and_embed_graph(data, file_path=None, show_plot=True):
+    """
+    Plot the graph using the provided dataframe
+    data: pandas DataFrame containing the course data
+    file_path: optional path to save Excel file with embedded graph
+    show_plot: whether to display the plot
+    """
+    # Extract relevant data
+    course_codes = data['Course_Code']
+    internal_avg = data['I_Average']
+    external_avg = data['E_Average']
+    total_avg = data['T_Average']
     
     # Create a fancy bar plot for comparison
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -30,48 +35,43 @@ def plot_and_embed_graph(csv_path):
     # Add labels, title, and customize the plot
     ax.set_xlabel('Course Code', fontsize=12)
     ax.set_ylabel('Average Marks', fontsize=12)
-    ax.set_title('Comparison of Internal, External, and Total Averages', fontsize=14)
+    ax.set_title('Course-wise Average Performance Comparison', fontsize=14)
     ax.set_xticks(index)
-    ax.set_xticklabels(course_codes, rotation=45, ha='center')
-    ax.legend(fontsize='small', loc='upper left')
+    ax.set_xticklabels(course_codes, rotation=45, ha='right')
+    ax.legend(fontsize='x-small', loc='upper left')
 
     # Add values on top of the bars
-    for bar in bars_internal:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.1f}', ha='center', va='bottom', fontsize=9)
-
-    for bar in bars_external:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.1f}', ha='center', va='bottom', fontsize=9)
-
-    for bar in bars_total:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2, height, f'{height:.1f}', ha='center', va='bottom', fontsize=9)
+    for bars in [bars_internal, bars_external, bars_total]:
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, height, 
+                   f'{height:.2f}', ha='center', va='bottom', fontsize=9)
     
-    # Save the plot as an image file
-    output_dir = os.path.dirname(csv_path)
-    graph_image_path = os.path.join(output_dir, 'comparison_graph.png')
     plt.tight_layout()
-    plt.savefig(graph_image_path)
-    plt.close()
 
-    # Create a new Excel file
-    with pd.ExcelWriter(csv_path.replace(".csv", ".xlsx"), engine='openpyxl') as writer:
-        # Write the DataFrame to the Excel file
-        df.to_excel(writer, index=False, sheet_name='Data')
+    # If file_path is provided, save and embed the graph
+    if file_path:
+        # Save the plot as an image file
+        output_dir = os.path.dirname(file_path)
+        graph_image_path = os.path.join(output_dir, 'course_comparison_graph.png')
+        plt.savefig(graph_image_path)
         
-        # Get the Excel workbook and sheet
-        workbook = writer.book
-        sheet = workbook['Data']
+        # Embed in Excel
+        workbook = load_workbook(file_path)
+        sheet = workbook.active
         
-        # Embed the image into the Excel file
+        # Calculate the column letter where the image should start
+        num_columns = len(data.columns)
+        image_column = get_column_letter(num_columns + 2)  # Leave one column gap
+        
+        # Embed the image into the Excel file next to the data
         img = Image(graph_image_path)
+        sheet.add_image(img, f'{image_column}1')
         
-        # Position the image in the Excel sheet (starting from cell G1)
-        sheet.add_image(img, 'G1')
+        # Save the workbook with both data and graph
+        workbook.save(file_path)
+        print(f"Course-wise comparison graph embedded in {file_path}")
 
-        print(f"Comparison graph saved and embedded in {csv_path.replace('.csv', '.xlsx')}")
+    if show_plot:
+        plt.show()
 
-# Example usage:j
-csv_file_path = "assets/csv_files/average_marks_file.csv"
-plot_and_embed_graph(csv_file_path)
