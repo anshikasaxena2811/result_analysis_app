@@ -9,8 +9,8 @@ def analysis():
     # List of file paths with cross-platform path handling
     files = [
         (os.path.join(base_path, "output_I.csv"), "Internal"),
-        (os.path.join(base_path, "output_E.csv"), "External"),
-        (os.path.join(base_path, "output_T.csv"), "Total")
+         (os.path.join(base_path, "output_E.csv"), "External"),
+         (os.path.join(base_path, "output_T.csv"), "Total")
     ]
     
     # Initialize an empty list to store the results
@@ -25,10 +25,11 @@ def analysis():
         df1 = df.copy()
         
         # Replace '--' with NaN
-        df1.replace("--", np.nan, inplace=True)
+        #df1.replace("--", np.nan, inplace=True)
         
         # Drop rows with NaN values
         df1.dropna(axis=0, inplace=True)
+        
         
         # Extract the specified portion of the DataFrame (columns that contain marks)
         f = df1.iloc[:, 3:-4]

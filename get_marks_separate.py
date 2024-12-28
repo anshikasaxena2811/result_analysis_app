@@ -71,6 +71,6 @@ def get_data(file_path, identifier):
     print(f"Data saved to {output_file_path}")
 
 
-get_data(r"assets/resultData-2.xlsx", "T")
-get_data(r"assets/resultData-2.xlsx", "I")
-get_data(r"assets/resultData-2.xlsx", "E")
+get_data(r"assets/resultData.xlsx", "T")
+get_data(r"assets/resultData.xlsx", "I")
+get_data(r"assets/resultData.xlsx", "E")
