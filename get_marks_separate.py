@@ -101,9 +101,11 @@ def analyze_marks(file_path):
             current_graph_row = 0
             all_distributions = []
             
-            # Define marks ranges once before the loop
-            ranges = [(0, 10), (11, 20), (21, 30), (31, 40), (41, 50),
-                     (51, 60)]
+            # Define marks ranges based on identifier
+            if identifier == 'T':
+                ranges = [(0, 20), (21, 40), (41, 60), (61, 80), (81, 100)]
+            elif identifier == 'E':
+                ranges = [(0, 10), (11, 20), (21, 30), (31, 40), (41, 50), (51, 60)]
 
             with PdfPages(pdf_file) as pdf:
                 # First create all tables for Excel
