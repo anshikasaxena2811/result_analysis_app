@@ -78,7 +78,9 @@ def analysis():
     merged_df.to_csv(output_path, index=False)
     
     print(f"Data saved to {output_path}")
+
     return merged_df
 
+
 # Call the function and print the result
-analysis()
+#analysis()
