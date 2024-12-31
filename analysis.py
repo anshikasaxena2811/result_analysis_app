@@ -27,7 +27,7 @@ def analyze_marks(file_path):
         df = pd.read_excel(file_path)
         df1 = df.drop(range(0, 2))
         row = df1.iloc[0, :]
-        
+
         # Find columns matching identifier
         indexOfIdentifier = [i for i, val in enumerate(row.values) if val == identifier]
         
@@ -59,6 +59,15 @@ def analyze_marks(file_path):
             df1.columns = updatedColList
             df1 = df1.loc[:, ~df1.columns.str.contains("-")]
         
+        # Create total students marks directory
+        total_marks_dir = os.path.join(output_dir, "total_students_marks") 
+        os.makedirs(total_marks_dir, exist_ok=True)
+        
+        # Save complete dataframe before dropping NA rows
+        total_marks_file = os.path.join(total_marks_dir, f"{identifier}_total_marks.xlsx")
+        df1.to_excel(total_marks_file, index=False)
+        print(f"Total marks for {identifier} saved to {total_marks_file}")
+
         df1.dropna(axis=0, how='any', inplace=True)
         
         # Clean marks columns and convert to numeric
@@ -72,14 +81,14 @@ def analyze_marks(file_path):
         # Calculate course averages and round to 2 decimal places
         course_averages = marks_columns.mean(axis=0).round(2)  # Added .round(2)
 
-        # Create separate_marks directory
-        separate_marks_dir = os.path.join(output_dir, "separate_marks")
-        os.makedirs(separate_marks_dir, exist_ok=True)
+        # # Create separate_marks directory
+        # separate_marks_dir = os.path.join(output_dir, "separate_marks")
+        # os.makedirs(separate_marks_dir, exist_ok=True)
         
-        # Save the marks data for each identifier
-        separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
-        df1.to_excel(separate_marks_file, index=False)
-        print(f"Separate marks for {identifier} saved to {separate_marks_file}")
+        # # Save the marks data for each identifier
+        # separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
+        # df1.to_excel(separate_marks_file, index=False)
+        # print(f"Separate marks for {identifier} saved to {separate_marks_file}")
 
         # Create marks distribution for both 'E' and 'T' identifiers
         #range 
@@ -237,11 +246,11 @@ def analyze_marks(file_path):
         worksheet.insert_image(f'{graph_col}2', '', {'image_data': buf, 'x_scale': 0.8, 'y_scale': 0.8})
         
         # Save separate marks for each identifier
-        for identifier in identifiers:
-            separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
-            if os.path.exists(separate_marks_file):
-                df = pd.read_excel(separate_marks_file)
-                df.to_excel(writer, sheet_name=f'{identifier} Marks', index=False)
+        # for identifier in identifiers:
+        #     separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
+        #     if os.path.exists(separate_marks_file):
+        #         df = pd.read_excel(separate_marks_file)
+        #         df.to_excel(writer, sheet_name=f'{identifier} Marks', index=False)
 
     print(f"Average marks Excel report saved to: {consolidated_excel}")
 
