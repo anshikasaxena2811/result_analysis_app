@@ -92,109 +92,105 @@ def analyze_marks(file_path):
             pdf_file = os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.pdf")
             excel_file = os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.xlsx")
             
-            # Create a workbook and worksheet
-            workbook = xlsxwriter.Workbook(excel_file)
-            worksheet = workbook.add_worksheet()
+            # Create ranges based on identifier
+            if identifier == 'E':
+                ranges = [(0, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 60)]
+            else:  # for T (Total)
+                ranges = [(0, 10), (10, 20), (20, 30), (30, 40), (40, 50), 
+                         (50, 60), (60, 70), (70, 80), (80, 90), (90, 100)]
             
-            # Define starting positions
-            current_row = 0
-            current_graph_row = 0
-            all_distributions = []
+            # Create a single DataFrame for the distribution
+            distribution_data = {}
+            range_labels = [f'{start}-{end}' for start, end in ranges]
             
-            # Define marks ranges based on identifier
-            if identifier == 'T':
-                ranges = [(0, 20), (21, 40), (41, 60), (61, 80), (81, 100)]
-            elif identifier == 'E':
-                ranges = [(0, 10), (11, 20), (21, 30), (31, 40), (41, 50), (51, 60)]
-
-            with PdfPages(pdf_file) as pdf:
-                # First create all tables for Excel
-                worksheet.write(current_row, 0, "Marks Distribution Tables")
-                current_row += 2
-                
-                for subject in marks_columns.columns:
-                    # Calculate distribution
-                    distribution = []
-                    for start, end in ranges:
-                        count = ((marks_columns[subject] >= start) & 
-                                (marks_columns[subject] <= end)).sum()
-                        distribution.append({
-                            'Range': f'{start}-{end}',
-                            'Number of Students': count
-                        })
-                    
-                    # Create DataFrame for distribution
-                    dist_df = pd.DataFrame(distribution)
-                    all_distributions.append((subject, dist_df))
-                    
-                    # Write to Excel
-                    worksheet.write(current_row, 0, f"Subject: {subject}")
-                    current_row += 2  # Increased spacing before table
-                    worksheet.write(current_row, 0, "Range")
-                    worksheet.write(current_row, 1, "Number of Students")
-                    current_row += 2
-                    
-                    for idx, row in dist_df.iterrows():
-                        worksheet.write(current_row, 0, row['Range'])
-                        worksheet.write(current_row, 1, row['Number of Students'])
-                        current_row += 1
-                    current_row += 2  # Increased spacing after table
-                
-                # Add more space between tables and graphs section
-                current_row += 2  # Increased spacing before graphs section
-                worksheet.write(current_row, 0, "Marks Distribution Graphs")
-                current_row += 5
-                current_graph_row = current_row
-                
-                # Create PDF pages with tables and graphs
-                for subject, dist_df in all_distributions:
-                    # Create figure with two subplots for PDF
-                    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), height_ratios=[2, 1])
-                    
-                    # Create bar plot
-                    ax1.bar(dist_df['Range'], dist_df['Number of Students'])
-                    ax1.set_title(f'Marks Distribution for {subject}')
-                    ax1.set_xlabel('Marks Range')
-                    ax1.set_ylabel('Number of Students')
-                    ax1.tick_params(axis='x', rotation=45)
-                    
-                    # Create table plot
-                    ax2.axis('tight')
-                    ax2.axis('off')
-                    table = ax2.table(cellText=dist_df.values,
-                                    colLabels=dist_df.columns,
-                                    cellLoc='center',
-                                    loc='center')
-                    table.auto_set_font_size(False)
-                    table.set_fontsize(9)
-                    table.scale(1.2, 1.5)
-                    
-                    plt.tight_layout()
-                    
-                    # Save to PDF
-                    pdf.savefig(fig)
-                    plt.close()
-                    
-                    # Create separate plot for Excel
-                    plt.figure(figsize=(10, 6))
-                    plt.bar(dist_df['Range'], dist_df['Number of Students'])
-                    plt.title(f'Marks Distribution for {subject}')
-                    plt.xlabel('Marks Range')
-                    plt.ylabel('Number of Students')
-                    plt.xticks(rotation=45)
-                    plt.tight_layout()
-                    
-                    # Save plot to buffer and insert into Excel
-                    buf = io.BytesIO()
-                    plt.savefig(buf, format='png')
-                    worksheet.insert_image(current_graph_row, 0, '', {'image_data': buf, 'x_scale': 0.8, 'y_scale': 0.8})
-                    current_graph_row += 35  # Increased spacing between graphs (was 20)
+            for subject in marks_columns.columns:
+                subject_counts = []
+                for start, end in ranges:
+                    count = ((marks_columns[subject] >= start) & 
+                            (marks_columns[subject] <= end)).sum()
+                    subject_counts.append(count)
+                distribution_data[subject] = subject_counts
             
-            # Close the workbook
-            workbook.close()
+            # Create DataFrame with ranges as rows and subjects as columns
+            distribution_df = pd.DataFrame(distribution_data, index=range_labels)
+            
+            # Save to Excel with embedded graph
+            with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+                # Save the distribution data
+                distribution_df.to_excel(writer, sheet_name=f'{identifier}_distribution')
+                
+                # Get workbook and worksheet
+                workbook = writer.book
+                worksheet = writer.sheets[f'{identifier}_distribution']
+                
+                # Calculate the position for the graph
+                last_row = len(distribution_df.index) + 2
+                chart_row = last_row + 2
+                
+                # Create a bar chart
+                chart = workbook.add_chart({'type': 'column'})
+                
+                # Add data series for each subject (now columns)
+                for col_num, subject in enumerate(distribution_df.columns, start=1):
+                    chart.add_series({
+                        'name':       [f'{identifier}_distribution', 0, col_num],  # Subject name
+                        'categories': [f'{identifier}_distribution', 1, 0, len(ranges), 0],  # Range labels
+                        'values':     [f'{identifier}_distribution', 1, col_num, len(ranges), col_num],  # Values
+                    })
+                
+                # Configure chart
+                chart.set_title({'name': f'{identifier} Marks Distribution by Subject'})
+                chart.set_x_axis({'name': 'Marks Range'})
+                chart.set_y_axis({'name': 'Number of Students'})
+                chart.set_legend({'position': 'bottom'})
+                
+                # Insert chart into the worksheet
+                worksheet.insert_chart(chart_row, 1, chart, {'x_scale': 2, 'y_scale': 1.5})
             
             print(f"Combined distribution report for {identifier} saved to {pdf_file}")
             print(f"Distribution data and graphs for {identifier} saved to Excel file: {excel_file}")
+
+            # Generate PDF with table and graph
+            plt.figure(figsize=(12, 8))
+            
+            # Create table subplot
+            plt.subplot(2, 1, 1)
+            plt.axis('tight')
+            plt.axis('off')
+            table = plt.table(cellText=distribution_df.values,
+                            rowLabels=distribution_df.index,
+                            colLabels=distribution_df.columns,
+                            cellLoc='center',
+                            loc='center')
+            table.auto_set_font_size(False)
+            table.set_fontsize(9)
+            table.scale(1.2, 1.5)
+            plt.title(f'{identifier} Marks Distribution')
+
+            # Create bar plot subplot
+            plt.subplot(2, 1, 2)
+            x = np.arange(len(range_labels))
+            width = 0.8 / len(marks_columns.columns)
+            
+            for idx, subject in enumerate(distribution_df.columns):
+                plt.bar(x + idx * width, 
+                       distribution_df[subject],
+                       width,
+                       label=subject)
+            
+            plt.xlabel('Marks Range')
+            plt.ylabel('Number of Students')
+            plt.title('Marks Distribution by Subject')
+            plt.xticks(x + width * (len(marks_columns.columns) - 1) / 2, range_labels, rotation=45)
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            
+            plt.tight_layout()
+            
+            # Save to PDF
+            plt.savefig(pdf_file, bbox_inches='tight')
+            plt.close()
+            
+            print(f"Distribution report for {identifier} saved to {pdf_file}")
 
         # Create a DataFrame with course codes and their averages
         result_df = pd.DataFrame({
@@ -207,21 +203,48 @@ def analyze_marks(file_path):
     final_df = all_marks[0]
     for df in all_marks[1:]:
         final_df = pd.merge(final_df, df, on='Course_Code', how='outer')
+
     
-    # Save separate files for each type of average
-    internal_df = final_df[['Course_Code', 'I_Average']].round(2)
-    external_df = final_df[['Course_Code', 'E_Average']].round(2)
-    total_df = final_df[['Course_Code', 'T_Average']].round(2)
+    # Add faculty name column to final_df
+    final_df['Faculty_Name'] = ''  # Add empty column for faculty names
+
+    # Create a single Excel workbook for all data
+    consolidated_excel = os.path.join(averages_dir, "average_marks.xlsx")
     
-    # Save individual files
-    internal_file = os.path.join(averages_dir, "internal_averages.xlsx")
-    external_file = os.path.join(averages_dir, "external_averages.xlsx")
-    total_file = os.path.join(averages_dir, "total_averages.xlsx")
-    
-    internal_df.to_excel(internal_file, index=False)
-    external_df.to_excel(external_file, index=False)
-    total_df.to_excel(total_file, index=False)
-    
+    with pd.ExcelWriter(consolidated_excel, engine='xlsxwriter') as writer:
+        # Save course averages
+        final_df.to_excel(writer, sheet_name='Course Averages', index=False)
+        
+        # Get the workbook and the worksheet
+        workbook = writer.book
+        worksheet = writer.sheets['Course Averages']
+        
+        # Add the graph to the right of the data
+        # Calculate the column where the graph should start
+        last_col = len(final_df.columns)
+        graph_col = chr(ord('A') + last_col + 1)  # Skip one column after data
+        
+        # Create and save the graph
+        plt.figure(figsize=(10, 6))
+        plot_and_embed_graph(final_df, show_plot=False)
+        
+        # Save plot to buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        plt.close()
+        
+        # Insert the image in Excel
+        worksheet.insert_image(f'{graph_col}2', '', {'image_data': buf, 'x_scale': 0.8, 'y_scale': 0.8})
+        
+        # Save separate marks for each identifier
+        for identifier in identifiers:
+            separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
+            if os.path.exists(separate_marks_file):
+                df = pd.read_excel(separate_marks_file)
+                df.to_excel(writer, sheet_name=f'{identifier} Marks', index=False)
+
+    print(f"Average marks Excel report saved to: {consolidated_excel}")
+
     return final_df
 
 # Process all marks and get combined averages
