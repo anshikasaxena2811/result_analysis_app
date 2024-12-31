@@ -222,67 +222,6 @@ def analyze_marks(file_path):
     external_df.to_excel(external_file, index=False)
     total_df.to_excel(total_file, index=False)
     
-    # Create a single Excel workbook for all data
-    consolidated_excel = os.path.join(output_dir, "consolidated_report.xlsx")
-    consolidated_pdf = os.path.join(output_dir, "consolidated_report.pdf")
-    
-    with pd.ExcelWriter(consolidated_excel, engine='xlsxwriter') as writer:
-        # Save course averages
-        final_df.to_excel(writer, sheet_name='Course Averages', index=False)
-        
-        # Save separate averages
-        internal_df.to_excel(writer, sheet_name='Internal Averages', index=False)
-        external_df.to_excel(writer, sheet_name='External Averages', index=False)
-        total_df.to_excel(writer, sheet_name='Total Averages', index=False)
-        
-        # Save separate marks for each identifier
-        for identifier in identifiers:
-            separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
-            if os.path.exists(separate_marks_file):
-                df = pd.read_excel(separate_marks_file)
-                df.to_excel(writer, sheet_name=f'{identifier} Marks', index=False)
-
-    # Convert all_marks list to a single DataFrame with identifier information
-    marks_data = pd.DataFrame()
-    for i, identifier in enumerate(['T', 'I', 'E']):
-        df = all_marks[i]
-        df['Identifier'] = identifier
-        marks_data = pd.concat([marks_data, df])
-
-    # Create consolidated PDF report
-    with PdfPages(consolidated_pdf) as pdf:
-        # Add course averages page
-        plot_and_embed_graph(final_df, consolidated_excel, show_plot=False)
-        pdf.savefig()
-        plt.close()
-        
-        # Add distribution plots for each identifier
-        for identifier in ['E', 'T']:
-            plt.figure(figsize=(10, 6))
-            # Create distribution plot using the average values
-            identifier_data = marks_data[marks_data['Identifier'] == identifier]
-            sns.histplot(data=identifier_data, x=f'{identifier}_Average', bins=20)
-            plt.title(f'Marks Distribution for {identifier}')
-            plt.xlabel('Marks')
-            plt.ylabel('Frequency')
-            pdf.savefig()
-            plt.close()
-            
-            # Add statistics table
-            plt.figure(figsize=(10, 6))
-            stats_df = identifier_data[f'{identifier}_Average'].describe()
-            plt.axis('off')
-            plt.table(cellText=[[round(v, 2)] for v in stats_df.values],
-                     rowLabels=stats_df.index,
-                     colLabels=[f'{identifier} Marks Statistics'],
-                     loc='center')
-            plt.title(f'Statistical Summary for {identifier} Marks')
-            pdf.savefig()
-            plt.close()
-
-    print(f"Consolidated Excel report saved to: {consolidated_excel}")
-    print(f"Consolidated PDF report saved to: {consolidated_pdf}")
-    
     return final_df
 
 # Process all marks and get combined averages
