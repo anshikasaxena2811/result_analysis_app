@@ -67,7 +67,6 @@ def analyze_marks(file_path):
             df1[col] = pd.to_numeric(df1[col].astype(str).str.replace('*', ''), errors='coerce')
         
         # Calculate average for each course instead of each student
-        student_info = df1.iloc[:, :3]  # First 3 columns (student info)
         marks_columns = df1.iloc[:, 3:-4]
         
         # Calculate course averages and round to 2 decimal places
@@ -83,6 +82,7 @@ def analyze_marks(file_path):
         print(f"Separate marks for {identifier} saved to {separate_marks_file}")
 
         # Create marks distribution for both 'E' and 'T' identifiers
+        #range 
         if identifier in ['E', 'T']:
             # Create marks distribution directory
             distribution_dir = os.path.join(output_dir, "marks_distribution")
