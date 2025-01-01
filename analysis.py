@@ -3,10 +3,7 @@ import os
 import numpy as np
 from plot_graph import plot_and_embed_graph
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-import xlsxwriter
 import io
-import seaborn as sns
 
 def get_cpi_range_count(df, cpi_col):
     """Calculate number of students in each CPI range."""
@@ -62,14 +59,14 @@ def analyze_marks(file_path):
     file_path = os.path.normpath(file_path)
     
     # Create output directories
-    output_dir = os.path.join("assets", "csv_files")
+    output_dir = os.path.join("assets", "output_files")
     averages_dir = os.path.join(output_dir, "averages")
     top_five_dir = os.path.join(output_dir, "top_five")
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(averages_dir, exist_ok=True)
     os.makedirs(top_five_dir, exist_ok=True)
     
-    # Create total_students_marks directory inside csv_files folder
+    # Create total_students_marks directory inside output_files folder
     total_marks_dir = os.path.join(output_dir, "total_students_marks")
     os.makedirs(total_marks_dir, exist_ok=True)
     
@@ -78,7 +75,7 @@ def analyze_marks(file_path):
     all_marks = []
     
     # Create analysis report directory only if processing Total marks
-    report_dir = os.path.join("assets", "csv_files", "analysis_report")
+    report_dir = os.path.join("assets", "output_files", "analysis_report")
     os.makedirs(report_dir, exist_ok=True)
     
     
@@ -198,9 +195,15 @@ def analyze_marks(file_path):
                 # Add data series for each subject (now columns)
                 for col_num, subject in enumerate(distribution_df.columns, start=1):
                     chart.add_series({
-                        'name':       [f'{identifier}_distribution', 0, col_num],  # Subject name
-                        'categories': [f'{identifier}_distribution', 1, 0, len(ranges), 0],  # Range labels
-                        'values':     [f'{identifier}_distribution', 1, col_num, len(ranges), col_num],  # Values
+                        'name':       [f'{identifier}_distribution', 0, col_num],
+                        'categories': [f'{identifier}_distribution', 1, 0, len(ranges), 0],
+                        'values':     [f'{identifier}_distribution', 1, col_num, len(ranges), col_num],
+                        'data_labels': {
+                            'value': True,
+                            'position': 'outside_end',
+                            'font': {'bold': True, 'size': 9},
+                            'num_format': '0'  # Show whole numbers
+                        }
                     })
                 
                 # Configure chart
@@ -238,21 +241,49 @@ def analyze_marks(file_path):
             width = 0.8 / len(marks_columns.columns)
             
             for idx, subject in enumerate(distribution_df.columns):
-                plt.bar(x + idx * width, 
+                bars = plt.bar(x + idx * width, 
                        distribution_df[subject],
                        width,
                        label=subject)
+                # Add value labels on top of each bar
+                for bar in bars:
+                    height = bar.get_height()
+                    plt.text(bar.get_x() + bar.get_width()/2., height,
+                            f'{int(height)}',
+                            ha='center', va='bottom',
+                            fontweight='bold',
+                            fontsize=8)
             
             plt.xlabel('Marks Range')
             plt.ylabel('Number of Students')
-            plt.title('Marks Distribution by Subject')
+            plt.title('Marks Distribution by Subject', pad=20, fontsize=14, fontweight='bold')
             plt.xticks(x + width * (len(marks_columns.columns) - 1) / 2, range_labels, rotation=45)
             plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
             
             plt.tight_layout()
             
-      
-          
+            # Style the distribution table
+            cell_format = workbook.add_format({
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter',
+                'bg_color': '#DCE6F1'
+            })
+
+            alt_cell_format = workbook.add_format({
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter',
+                'bg_color': '#FFFFFF'
+            })
+
+            # Apply formats to distribution table
+            for row_num in range(len(distribution_df)):
+                for col_num in range(len(distribution_df.columns)):
+                    format_to_use = cell_format if row_num % 2 == 0 else alt_cell_format
+                    worksheet.write(row_num + 1, col_num, 
+                                   distribution_df.iloc[row_num, col_num], 
+                                   format_to_use)
 
         # Create a DataFrame with course codes and their averages
         result_df = pd.DataFrame({
@@ -298,19 +329,29 @@ def analyze_marks(file_path):
                     worksheet = writer.sheets['Sheet1']
                     
                     # Define formats
-                    header_format = workbook.add_format({
+                    top_five_header_format = workbook.add_format({
                         'bold': True,
                         'border': 1,
                         'align': 'center',
-                        'valign': 'vcenter'
+                        'valign': 'vcenter',
+                        'bg_color': '#1F497D',
+                        'font_color': 'white'
                     })
                     
-                    cell_format = workbook.add_format({
+                    top_five_cell_format = workbook.add_format({
                         'border': 1,
                         'align': 'center',
-                        'valign': 'vcenter'
+                        'valign': 'vcenter',
+                        'bg_color': '#DCE6F1'
                     })
-                    
+
+                    top_five_alt_cell_format = workbook.add_format({
+                        'border': 1,
+                        'align': 'center',
+                        'valign': 'vcenter',
+                        'bg_color': '#FFFFFF'
+                    })
+
                     # Set column widths
                     worksheet.set_column('A:A', 10)  # Sl. No.
                     worksheet.set_column('B:B', 15)  # Enrollment No.
@@ -321,19 +362,140 @@ def analyze_marks(file_path):
                     
                     # Apply formats to header
                     for col_num, value in enumerate(top_five_df.columns.values):
-                        worksheet.write(0, col_num, value, header_format)
+                        worksheet.write(0, col_num, value, top_five_header_format)
                     
                     # Apply formats to cells
                     for row_num in range(len(top_five_df)):
+                        format_to_use = top_five_cell_format if row_num % 2 == 0 else top_five_alt_cell_format
                         for col_num in range(len(top_five_df.columns)):
                             worksheet.write(row_num + 1, col_num, 
                                          top_five_df.iloc[row_num, col_num], 
-                                         cell_format)
+                                         format_to_use)
                 
                 print(f"Top five students report saved to {top_five_file}")
 
+                # Add new code for subject-wise toppers
+                subject_toppers_dir = os.path.join(output_dir, "subject_toppers")
+                os.makedirs(subject_toppers_dir, exist_ok=True)
+                
+                # Get subject marks columns
+                subject_columns = df1.iloc[:, 3:-4].columns
+                
+                # Create Excel file for subject-wise toppers
+                subject_toppers_file = os.path.join(subject_toppers_dir, "subject_wise_toppers.xlsx")
+                
+                with pd.ExcelWriter(subject_toppers_file, engine='xlsxwriter') as writer:
+                    workbook = writer.book
+                    worksheet = workbook.add_worksheet('Subject Toppers')
+                    
+                    # Define formats
+                    header_format = workbook.add_format({
+                        'bold': True,
+                        'border': 1,
+                        'align': 'center',
+                        'valign': 'vcenter',
+                        'bg_color': '#D3D3D3'  # Light gray background for headers
+                    })
+                    
+                    cell_format = workbook.add_format({
+                        'border': 1,
+                        'align': 'center',
+                        'valign': 'vcenter'
+                    })
+
+                    subject_header_format = workbook.add_format({
+                        'bold': True,
+                        'font_size': 12,
+                        'align': 'center',
+                        'valign': 'vcenter',
+                        'bg_color': '#1F497D',  # Dark blue
+                        'font_color': 'white',
+                        'border': 1
+                    })
+                    
+                    # Set column widths
+                    worksheet.set_column('A:A', 8)   # Rank
+                    worksheet.set_column('B:B', 15)  # Enrollment No.
+                    worksheet.set_column('C:C', 25)  # Student Name
+                    worksheet.set_column('D:D', 15)  # Marks Obtained
+                    worksheet.set_column('E:E', 15)  # Maximum Marks
+                    worksheet.set_column('F:F', 10)  # CPI
+
+                    current_row = 0
+                    
+                    # Process each subject
+                    for subject in subject_columns:
+                        # Add subject header with merge
+                        worksheet.merge_range(current_row, 0, current_row, 5, f'Subject: {subject}', subject_header_format)
+                        current_row += 1
+
+                        # Write column headers
+                        headers = ['Rank', 'Enrollment No.', 'Student Name', 'Marks Obtained', 'Maximum Marks', 'CPI']
+                        for col, header in enumerate(headers):
+                            worksheet.write(current_row, col, header, header_format)
+                        current_row += 1
+
+                        # Get maximum marks for the subject
+                        max_marks = df1[subject].max()
+                        
+                        # Get all students with maximum marks
+                        toppers = df1[df1[subject] == max_marks][[
+                            'Enrollment No.',
+                            'Student Name',
+                            subject,
+                            cpi_col
+                        ]].sort_values(by=cpi_col, ascending=False)
+                        
+                        # Write data rows
+                        for idx, row in enumerate(toppers.values):
+                            format_to_use = cell_format if idx % 2 == 0 else alt_cell_format
+                            worksheet.write(current_row, 0, idx + 1, format_to_use)
+                            worksheet.write(current_row, 1, row[0], format_to_use)
+                            worksheet.write(current_row, 2, row[1], format_to_use)
+                            worksheet.write(current_row, 3, row[2], format_to_use)
+                            worksheet.write(current_row, 4, 100, format_to_use)
+                            worksheet.write(current_row, 5, row[3], format_to_use)
+                            current_row += 1
+                        
+                        # Add spacing between tables
+                        current_row += 2
+
+                print(f"Subject-wise toppers report saved to {subject_toppers_file}")
+
+                # Add table for students with CPI > 75
+                worksheet.write(current_row, 0, "Students with CPI Above 75", subject_header_format)
+                current_row += 2
+
+                # Get students with CPI > 75
+                high_performers = df1[pd.to_numeric(df1[cpi_col], errors='coerce') > 75].sort_values(
+                    by=cpi_col, ascending=False
+                )[[
+                    'Enrollment No.',
+                    'Student Name',
+                    'Grand Total',
+                    cpi_col
+                ]]
+
+                # Write headers
+                headers = ['Rank', 'Enrollment No.', 'Student Name', 'Total Marks', 'Maximum Marks', 'CPI']
+                for col, header in enumerate(headers):
+                    worksheet.write(current_row, col, header, header_format)
+                current_row += 1
+
+                # Write data rows
+                for idx, row in enumerate(high_performers.values):
+                    worksheet.write(current_row, 0, idx + 1, cell_format)       # Rank
+                    worksheet.write(current_row, 1, row[0], cell_format)        # Enrollment No.
+                    worksheet.write(current_row, 2, row[1], cell_format)        # Student Name
+                    worksheet.write(current_row, 3, row[2], cell_format)        # Total Marks
+                    worksheet.write(current_row, 4, len(subject_columns) * 100, cell_format)  # Maximum Marks
+                    worksheet.write(current_row, 5, row[3], cell_format)        # CPI
+                    current_row += 1
+
+                print(f"High performers (CPI > 75) added to the report")
+
             except Exception as e:
-                print(f"Error generating top five report: {str(e)}")
+                print(f"Error generating reports: {str(e)}")
                 continue
         
     # Merge all averages into one dataframe based on Course_Code
@@ -376,16 +538,6 @@ def analyze_marks(file_path):
        
 
     print(f"Average marks Excel report saved to: {consolidated_excel}")
-
-    # Create the report structure to match the image format
-    columns = [
-        'TOTAL STUDENTS APPEARED',
-        'TOTAL NO. OF PASS STUDENTS',
-        'TOTAL NO. OF REAPPEAR STUDENTS',
-        'HOLD STUDENTS',
-        'STATUS (CPI BASIS)',
-        'NO. OF STUDENTS'
-    ]
     
     report_file = os.path.join(report_dir, "analysis_report.xlsx")
     
@@ -429,12 +581,52 @@ def analyze_marks(file_path):
         
         # Add formatting
         workbook = writer.book
+        analysis_header_format = workbook.add_format({
+            'bold': True,
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#1F497D',
+            'font_color': 'white',
+            'text_wrap': True
+        })
+        
+        analysis_cell_format = workbook.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#DCE6F1'
+        })
+
+        analysis_alt_cell_format = workbook.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#FFFFFF'
+        })
+
+        # Apply formats to analysis report
+        for row_num in range(df_report.shape[0]):
+            format_to_use = analysis_cell_format if row_num % 2 == 0 else analysis_alt_cell_format
+            for col_num in range(df_report.shape[1]):
+                worksheet.write(row_num + 1, col_num, 
+                               df_report.iloc[row_num, col_num], 
+                               format_to_use)
+
+        # Add pass percentage at the bottom
+        worksheet.write(df_report.shape[0] + 2, 0, 'Pass Percentage', analysis_header_format)
+        worksheet.write(df_report.shape[0] + 2, 1, f': {pass_percentage:.2f}%', analysis_cell_format)
+        
+        # Add new sheet for high performers (CPI > 75)
+        workbook = writer.book
+        worksheet = workbook.add_worksheet('High Performers')
+        
         header_format = workbook.add_format({
             'bold': True,
             'border': 1,
             'align': 'center',
             'valign': 'vcenter',
-            'text_wrap': True
+            'bg_color': '#D3D3D3'  # Light gray background
         })
         
         cell_format = workbook.add_format({
@@ -442,21 +634,44 @@ def analyze_marks(file_path):
             'align': 'center',
             'valign': 'vcenter'
         })
-        
-        # Apply formats
-        for col_num, column in enumerate(df_report.columns):
-            worksheet.write(0, col_num, column, header_format)
-            worksheet.set_column(col_num, col_num, 15)  # Set column width
-            
-            # Write cell values with borders
-            for row_num in range(df_report.shape[0]):
-                value = df_report.iloc[row_num, col_num]
-                worksheet.write(row_num + 1, col_num, value, cell_format)
-        
-        # Add pass percentage at the bottom
-        worksheet.write(df_report.shape[0] + 2, 0, 'Pass Percentage', header_format)
-        worksheet.write(df_report.shape[0] + 2, 1, f': {pass_percentage:.2f}%', cell_format)
-        
+
+        # Set column widths
+        worksheet.set_column('A:A', 8)   # Rank
+        worksheet.set_column('B:B', 15)  # Enrollment No.
+        worksheet.set_column('C:C', 25)  # Student Name
+        worksheet.set_column('D:D', 15)  # Total Marks
+        worksheet.set_column('E:E', 15)  # Maximum Marks
+        worksheet.set_column('F:F', 10)  # CPI
+
+        # Write title
+        worksheet.merge_range('A1:F1', 'Students with CPI Above 75', header_format)
+
+        # Write headers
+        headers = ['Rank', 'Enrollment No.', 'Student Name', 'Total Marks', 'Maximum Marks', 'CPI']
+        for col, header in enumerate(headers):
+            worksheet.write(1, col, header, header_format)
+
+        # Get students with CPI > 75
+        high_performers = df1[pd.to_numeric(df1[cpi_col], errors='coerce') > 75].sort_values(
+            by=cpi_col, ascending=False
+        )[[
+            'Enrollment No.',
+            'Student Name',
+            'Grand Total',
+            cpi_col
+        ]]
+
+        # Write data rows
+        for idx, row in enumerate(high_performers.values):
+            worksheet.write(idx + 2, 0, idx + 1, cell_format)       # Rank
+            worksheet.write(idx + 2, 1, row[0], cell_format)        # Enrollment No.
+            worksheet.write(idx + 2, 2, row[1], cell_format)        # Student Name
+            worksheet.write(idx + 2, 3, row[2], cell_format)        # Total Marks
+            worksheet.write(idx + 2, 4, len(df1.iloc[:, 3:-4].columns) * 100, cell_format)  # Maximum Marks
+            worksheet.write(idx + 2, 5, row[3], cell_format)        # CPI
+
+        print(f"High performers (CPI > 75) sheet added to analysis report")
+
     print(f"Analysis report saved to {report_file}")
 
     return final_df

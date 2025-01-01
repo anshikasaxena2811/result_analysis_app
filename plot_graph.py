@@ -1,42 +1,74 @@
-import pandas as pd
 import numpy as np
-import os
 import matplotlib.pyplot as plt
-from openpyxl import Workbook
-from openpyxl.drawing.image import Image
-from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
 
-def plot_and_embed_graph(data, show_plot=True):
+def plot_and_embed_graph(data, show_plot=True, figsize=(10, 6)):
     """
-    Plot the graph using the provided dataframe
+    Plot a comparative bar graph showing Internal, External, and Total averages.
+    
+    Parameters:
+        data (DataFrame): DataFrame containing Course_Code and average columns
+        show_plot (bool): Whether to display the plot (default: True)
+        figsize (tuple): Figure dimensions (width, height) in inches (default: (10, 6))
     """
-    # Create figure and axis
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # Constants
+    BAR_WIDTH = 0.25
+    COLORS = {
+        'Internal': 'skyblue',
+        'External': 'lightgreen',
+        'Total': 'lightcoral'
+    }
+    COLUMNS = {
+        'Internal': 'I_Average',
+        'External': 'E_Average',
+        'Total': 'T_Average'
+    }
+
+    # Create figure and axis objects with specified size
+    fig, ax = plt.subplots(figsize=figsize)
     
-    # Set width of bars and positions
-    bar_width = 0.25
-    r1 = np.arange(len(data))
-    r2 = [x + bar_width for x in r1]
-    r3 = [x + bar_width for x in r2]
+    # Calculate bar positions
+    x = np.arange(len(data))
+    bar_positions = {
+        'Internal': x,
+        'External': x + BAR_WIDTH,
+        'Total': x + 2 * BAR_WIDTH
+    }
     
-    # Create bars
-    plt.bar(r1, data['I_Average'], width=bar_width, label='Internal', color='skyblue')
-    plt.bar(r2, data['E_Average'], width=bar_width, label='External', color='lightgreen')
-    plt.bar(r3, data['T_Average'], width=bar_width, label='Total', color='lightcoral')
+    # Create and label bars
+    bars = {}
+    for label, column in COLUMNS.items():
+        bars[label] = ax.bar(
+            bar_positions[label],
+            data[column],
+            BAR_WIDTH,
+            label=label,
+            color=COLORS[label]
+        )
+        
+        # Add value labels on top of bars
+        for bar in bars[label]:
+            height = bar.get_height()
+            ax.text(
+                bar.get_x() + BAR_WIDTH/2,
+                height,
+                f'{height:.1f}',
+                ha='center',
+                va='bottom'
+            )
     
-    # Add labels and title
-    plt.xlabel('Course Code')
-    plt.ylabel('Marks')
-    plt.title('Course-wise Performance Comparison')
-    plt.xticks([r + bar_width for r in range(len(data))], data['Course_Code'], rotation=45)
+    # Customize plot
+    ax.set_xlabel('Course Code')
+    ax.set_ylabel('Marks')
+    ax.set_title('Course-wise Performance Comparison')
+    ax.set_xticks(x + BAR_WIDTH)
+    ax.set_xticklabels(data['Course_Code'], rotation=45)
     
-    # Add legend
-    plt.legend()
-    
-    # Adjust layout to prevent label cutoff
+    # Add legend and adjust layout
+    ax.legend()
     plt.tight_layout()
     
     if show_plot:
         plt.show()
+    
+    return fig, ax
 
