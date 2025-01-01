@@ -81,6 +81,7 @@ def analyze_marks(file_path):
     report_dir = os.path.join("assets", "csv_files", "analysis_report")
     os.makedirs(report_dir, exist_ok=True)
     
+    
     # Dictionary to store report only for Total marks
     all_reports = {}
     
