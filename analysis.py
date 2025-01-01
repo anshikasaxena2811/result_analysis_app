@@ -8,6 +8,55 @@ import xlsxwriter
 import io
 import seaborn as sns
 
+def get_cpi_range_count(df, cpi_col):
+    """Calculate number of students in each CPI range."""
+    ranges = {
+        'Above 75.00': (75.01, float('inf')),
+        '69.51 - 75.00': (69.51, 75.00),
+        '59.51 - 69.50': (59.51, 69.50),
+        '49.51 - 59.50': (49.51, 59.50),
+        '45.00 - 49.50': (45.00, 49.50),
+        'Below 45.00': (0, 44.99)
+    }
+    
+    # Convert CPI column to numeric, coercing errors to NaN
+    df[cpi_col] = pd.to_numeric(df[cpi_col], errors='coerce')
+    
+    cpi_counts = {}
+    for range_name, (min_val, max_val) in ranges.items():
+        count = df[df[cpi_col].between(min_val, max_val)].shape[0]
+        cpi_counts[range_name] = count
+    
+    return cpi_counts
+
+def generate_analysis_report(df, identifier):
+    """Generate analysis report for the given dataframe and identifier."""
+    # Get column names (handling different possible names)
+    remarks_col = df.filter(regex='Remarks|REMARKS').columns[0]
+    cpi_col = df.filter(regex='CPI|CGPA').columns[0]
+    
+    # Basic metrics
+    metrics = {
+        'Total Students': len(df['Enrollment No.'].dropna()),
+        'Passed Students': df[remarks_col].str.contains('Pass', case=False, na=False).sum(),
+        'Re-appear Students': df[remarks_col].str.contains('Re-appear', case=False, na=False).sum(),
+        'Result Hold Students': df[remarks_col].str.contains('Result hold', case=False, na=False).sum()
+    }
+    
+    # Get CPI range metrics
+    cpi_metrics = get_cpi_range_count(df, cpi_col)
+    
+    # Combine all metrics
+    all_metrics = {**metrics, **cpi_metrics}
+    
+    # Create report dataframe with vertical layout
+    report_df = pd.DataFrame({
+        'Category': list(all_metrics.keys()),
+        'Number of Students': list(all_metrics.values())
+    })
+    
+    return report_df
+
 def analyze_marks(file_path):
     pd.set_option("mode.copy_on_write", True)
     file_path = os.path.normpath(file_path)
@@ -22,12 +71,58 @@ def analyze_marks(file_path):
     identifiers = ['T', 'I', 'E']
     all_marks = []
     
+    # Create analysis report directory
+    report_dir = os.path.join("assets", "csv_files", "analysis_report")
+    os.makedirs(report_dir, exist_ok=True)
+    
+    
+
+    
+
+    # Dictionary to store reports for all identifiers
+    all_reports = {}
+    file_path="assets\\total_students_marks\\T_total_marks.xlsx"
+    file_path = os.path.normpath(file_path)
+    df2=pd.read_excel(file_path)
+    report_df = generate_analysis_report(df2, "T")
+    all_reports["T"] = report_df
     for identifier in identifiers:
         # Load and process data for each identifier
         df = pd.read_excel(file_path)
         df1 = df.drop(range(0, 2))
-        row = df1.iloc[0, :]
+
+        # Create total students marks directory and save file
+        total_marks_dir = os.path.join(output_dir, "total_students_marks") 
+        os.makedirs(total_marks_dir, exist_ok=True)
         
+        # Save complete dataframe before dropping NA rows - original location
+        total_marks_file = os.path.join(total_marks_dir, f"{identifier}_total_marks.xlsx")
+        df1.to_excel(total_marks_file, index=False)
+        print(f"Total marks for {identifier} saved to {total_marks_file}")
+
+        # Save an additional copy directly in assets folder
+        assets_total_marks_file = os.path.join("assets", f"{identifier}_total_marks.xlsx")
+        df1.to_excel(assets_total_marks_file, index=False)
+        print(f"Total marks for {identifier} also saved to {assets_total_marks_file}")
+
+       
+
+
+
+
+
+
+
+
+
+
+  
+        # # Generate analysis report before dropping NA rows
+        # report_df = generate_analysis_report(df1, identifier)
+        # all_reports[identifier] = report_df
+        
+        row = df1.iloc[0, :]
+
         # Find columns matching identifier
         indexOfIdentifier = [i for i, val in enumerate(row.values) if val == identifier]
         
@@ -59,6 +154,15 @@ def analyze_marks(file_path):
             df1.columns = updatedColList
             df1 = df1.loc[:, ~df1.columns.str.contains("-")]
         
+        # Create total students marks directory
+        total_marks_dir = os.path.join(output_dir, "total_students_marks") 
+        os.makedirs(total_marks_dir, exist_ok=True)
+        
+        # Save complete dataframe before dropping NA rows
+        total_marks_file = os.path.join(total_marks_dir, f"{identifier}_total_marks.xlsx")
+        df1.to_excel(total_marks_file, index=False)
+        print(f"Total marks for {identifier} saved to {total_marks_file}")
+
         df1.dropna(axis=0, how='any', inplace=True)
         
         # Clean marks columns and convert to numeric
@@ -72,14 +176,16 @@ def analyze_marks(file_path):
         # Calculate course averages and round to 2 decimal places
         course_averages = marks_columns.mean(axis=0).round(2)  # Added .round(2)
 
-        # Create separate_marks directory
-        separate_marks_dir = os.path.join(output_dir, "separate_marks")
-        os.makedirs(separate_marks_dir, exist_ok=True)
         
-        # Save the marks data for each identifier
-        separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
-        df1.to_excel(separate_marks_file, index=False)
-        print(f"Separate marks for {identifier} saved to {separate_marks_file}")
+
+        # # Create separate_marks directory
+        # separate_marks_dir = os.path.join(output_dir, "separate_marks")
+        # os.makedirs(separate_marks_dir, exist_ok=True)
+        
+        # # Save the marks data for each identifier
+        # separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
+        # df1.to_excel(separate_marks_file, index=False)
+        # print(f"Separate marks for {identifier} saved to {separate_marks_file}")
 
         # Create marks distribution for both 'E' and 'T' identifiers
         #range 
@@ -237,15 +343,95 @@ def analyze_marks(file_path):
         worksheet.insert_image(f'{graph_col}2', '', {'image_data': buf, 'x_scale': 0.8, 'y_scale': 0.8})
         
         # Save separate marks for each identifier
-        for identifier in identifiers:
-            separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
-            if os.path.exists(separate_marks_file):
-                df = pd.read_excel(separate_marks_file)
-                df.to_excel(writer, sheet_name=f'{identifier} Marks', index=False)
+        # for identifier in identifiers:
+        #     separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
+        #     if os.path.exists(separate_marks_file):
+        #         df = pd.read_excel(separate_marks_file)
+        #         df.to_excel(writer, sheet_name=f'{identifier} Marks', index=False)
 
     print(f"Average marks Excel report saved to: {consolidated_excel}")
 
+    # Create the report structure to match the image format
+    columns = [
+        'TOTAL STUDENTS APPEARED',
+        'TOTAL NO. OF PASS STUDENTS',
+        'TOTAL NO. OF REAPPEAR STUDENTS',
+        'HOLD STUDENTS',
+        'STATUS (CPI BASIS)',
+        'NO. OF STUDENTS'
+    ]
+    
+    report_file = os.path.join(report_dir, "analysis_report.xlsx")
+    
+    with pd.ExcelWriter(report_file, engine='xlsxwriter') as writer:
+        for identifier, report_df in all_reports.items():
+            # Create DataFrame with the desired structure
+            total_students = report_df.loc[report_df['Category'] == 'Total Students', 'Number of Students'].iloc[0]
+            passed_students = report_df.loc[report_df['Category'] == 'Passed Students', 'Number of Students'].iloc[0]
+            reappear_students = report_df.loc[report_df['Category'] == 'Re-appear Students', 'Number of Students'].iloc[0]
+            hold_students = report_df.loc[report_df['Category'] == 'Result Hold Students', 'Number of Students'].iloc[0]
+            
+            # Create the main data
+            data = {
+                'TOTAL STUDENTS APPEARED': [total_students] + [''] * 5,
+                'TOTAL NO. OF PASS STUDENTS': [passed_students] + [''] * 5,
+                'TOTAL NO. OF REAPPEAR STUDENTS': [reappear_students] + [''] * 5,
+                'HOLD STUDENTS': [hold_students] + [''] * 5,
+                'STATUS (CPI BASIS)': ['Above 75.00', '69.51 - 75.00', '59.51 - 69.50', 
+                                     '49.51 - 59.50', '45.00 - 49.50', 'Below 45.00'],
+                'NO. OF STUDENTS': [
+                    report_df.loc[report_df['Category'] == 'Above 75.00', 'Number of Students'].iloc[0],
+                    report_df.loc[report_df['Category'] == '69.51 - 75.00', 'Number of Students'].iloc[0],
+                    report_df.loc[report_df['Category'] == '59.51 - 69.50', 'Number of Students'].iloc[0],
+                    report_df.loc[report_df['Category'] == '49.51 - 59.50', 'Number of Students'].iloc[0],
+                    report_df.loc[report_df['Category'] == '45.00 - 49.50', 'Number of Students'].iloc[0],
+                    report_df.loc[report_df['Category'] == 'Below 45.00', 'Number of Students'].iloc[0]
+                ]
+            }
+            
+            df_report = pd.DataFrame(data)
+            
+            # Calculate pass percentage
+            pass_percentage = (passed_students / total_students * 100) if total_students > 0 else 0
+            
+            # Write to Excel
+            df_report.to_excel(writer, sheet_name=f'{identifier}_Analysis', index=False)
+            worksheet = writer.sheets[f'{identifier}_Analysis']
+            
+            # Add formatting
+            workbook = writer.book
+            header_format = workbook.add_format({
+                'bold': True,
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter',
+                'text_wrap': True
+            })
+            
+            cell_format = workbook.add_format({
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter'
+            })
+            
+            # Apply formats
+            for col_num, column in enumerate(df_report.columns):
+                worksheet.write(0, col_num, column, header_format)
+                worksheet.set_column(col_num, col_num, 15)  # Set column width
+                
+                # Write cell values with borders
+                for row_num in range(df_report.shape[0]):
+                    value = df_report.iloc[row_num, col_num]
+                    worksheet.write(row_num + 1, col_num, value, cell_format)
+            
+            # Add pass percentage at the bottom
+            worksheet.write(df_report.shape[0] + 2, 0, 'Pass Percentage', header_format)
+            worksheet.write(df_report.shape[0] + 2, 1, f': {pass_percentage:.2f}%', cell_format)
+            
+    print(f"Analysis report saved to {report_file}")
+
     return final_df
 
-# Process all marks and get combined averages
-result = analyze_marks(r"assets/resultData.xlsx")
+if __name__ == "__main__":
+    # Process all marks and get combined averages
+    result = analyze_marks(r"assets/resultData.xlsx")
