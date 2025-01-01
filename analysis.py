@@ -84,11 +84,7 @@ def analyze_marks(file_path):
     
     # Dictionary to store report only for Total marks
     all_reports = {}
-    file_path="assets\\total_students_marks\\T_total_marks.xlsx"
-    file_path = os.path.normpath(file_path)
-    df2=pd.read_excel(file_path)
-    report_df = generate_analysis_report(df2, "T")
-    all_reports["T"] = report_df
+    
     for identifier in identifiers:
         # Load and process data for each identifier
         df = pd.read_excel(file_path)
@@ -158,7 +154,7 @@ def analyze_marks(file_path):
             os.makedirs(distribution_dir, exist_ok=True)
             
             # Create PDF and Excel files with identifier prefix
-            pdf_file = os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.pdf")
+           # pdf_file = os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.pdf")
             excel_file = os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.xlsx")
             
             # Create ranges based on identifier
@@ -216,7 +212,7 @@ def analyze_marks(file_path):
                 # Insert chart into the worksheet
                 worksheet.insert_chart(chart_row, 1, chart, {'x_scale': 2, 'y_scale': 1.5})
             
-            print(f"Combined distribution report for {identifier} saved to {pdf_file}")
+            #print(f"Combined distribution report for {identifier} saved to {pdf_file}")
             print(f"Distribution data and graphs for {identifier} saved to Excel file: {excel_file}")
 
             # Generate PDF with table and graph
@@ -255,11 +251,8 @@ def analyze_marks(file_path):
             
             plt.tight_layout()
             
-            # Save to PDF
-            plt.savefig(pdf_file, bbox_inches='tight')
-            plt.close()
-            
-            print(f"Distribution report for {identifier} saved to {pdf_file}")
+      
+          
 
         # Create a DataFrame with course codes and their averages
         result_df = pd.DataFrame({
@@ -380,12 +373,7 @@ def analyze_marks(file_path):
         # Insert the image in Excel
         worksheet.insert_image(f'{graph_col}2', '', {'image_data': buf, 'x_scale': 0.8, 'y_scale': 0.8})
         
-        # Save separate marks for each identifier
-        # for identifier in identifiers:
-        #     separate_marks_file = os.path.join(separate_marks_dir, f"{identifier}_marks.xlsx")
-        #     if os.path.exists(separate_marks_file):
-        #         df = pd.read_excel(separate_marks_file)
-        #         df.to_excel(writer, sheet_name=f'{identifier} Marks', index=False)
+       
 
     print(f"Average marks Excel report saved to: {consolidated_excel}")
 
