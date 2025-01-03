@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, BarChart2, FileSpreadsheet, Trophy, Users, Moon, Sun } from "lucide-react"
 import { useDispatch, useSelector } from 'react-redux'
 import { toggleTheme } from '../store/themeSlice'
+import { Link } from 'react-router-dom'
 
 export default function Landing() {
   const dispatch = useDispatch()
@@ -40,9 +41,11 @@ export default function Landing() {
               Transform your academic data into actionable insights with our comprehensive result analysis platform.
             </p>
             <div className="flex gap-4 justify-center pt-4">
-              <Button size="lg">
-                Get Started
-                <ArrowRight className="ml-2 h-5 w-5" />
+              <Button size="lg" asChild>
+                <Link to="/upload">
+                  Get Started
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
               </Button>
               <Button size="lg" variant="outline">
                 Learn More
