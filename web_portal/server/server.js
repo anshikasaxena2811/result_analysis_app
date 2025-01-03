@@ -61,6 +61,23 @@ app.post('/upload', upload.single('file'), (req, res) => {
   });
 });
 
+// Add new route for file download
+app.get('/download', (req, res) => {
+  const filePath = req.query.filePath;
+  console.log("filePath => ", filePath);
+  if (!filePath) {
+    return res.status(400).json({ error: 'No file path provided' });
+  }
+
+  // Verify the file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  // Send the file
+  res.download(filePath);
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);

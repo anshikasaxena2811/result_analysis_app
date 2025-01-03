@@ -4,22 +4,31 @@ import { Button } from "@/components/ui/button"
 import { FileSpreadsheet, Upload, X, Loader2 } from "lucide-react"
 import { toast } from 'sonner'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { setGeneratedFiles } from '../store/filesSlice'
 
 export default function FileUpload() {
   const [file, setFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [filePath, setFilePath] = useState(null)
+  const navigate = useNavigate()
+
+  const dispatch = useDispatch()
+  const generatedFiles = useSelector((state) => state.files.generatedFiles)
+
+  console.log("generatedFiles => ", generatedFiles);
+  
 
   const onDrop = useCallback((acceptedFiles) => {
     const selectedFile = acceptedFiles[0]
     if (selectedFile) {
-      if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-          selectedFile.type === 'application/vnd.ms-excel') {
+      if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
         setFile(selectedFile)
         setFilePath(null) // Reset file path when new file is selected
       } else {
-        toast.error('Please upload only Excel files')
+        toast.error('Please upload only .xlsx Excel files')
       }
     }
   }, [])
@@ -27,8 +36,7 @@ export default function FileUpload() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls']
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
     },
     multiple: false
   })
@@ -62,23 +70,52 @@ export default function FileUpload() {
     }
   }
 
-  const handleAnalyze = async () => {
-    if (!filePath) {
-      toast.error('Please upload the file first')
+  const handleAnalysis = async () => {
+    if (!file) {
+      toast.error('Please select a file first')
       return
     }
-
+    console.log("file => ", file)
     setIsAnalyzing(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
     try {
-      const response = await axios.post('http://localhost:5000/analyze', {
-        file_path: filePath
+      // First upload the file
+      const uploadResponse = await axios.post('http://localhost:8000/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       })
 
-      toast.success('Analysis completed successfully!')
-      console.log('Analysis results:', response.data)
-      
+      console.log("uploadResponse => ", uploadResponse)
+
+      if (uploadResponse.data.filePath) {
+        // Then send the file path for analysis
+        const analysisResponse = await axios.post('http://localhost:5000/analyze', {
+          file_path: uploadResponse.data.filePath
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+
+        console.log('Analysis response:', analysisResponse.data)
+        
+        if (analysisResponse.data) {
+          toast.success('Analysis completed successfully')
+          dispatch(setGeneratedFiles(analysisResponse.data.generated_files || []))
+          navigate('/results', { 
+            state: { 
+              result: analysisResponse.data.result || [],
+              generated_files: analysisResponse.data.generated_files || []
+            }
+          })
+        }
+      }
     } catch (error) {
-      toast.error(`Analysis failed: ${error.response?.data?.error || error.message}`)
+      console.error('Error during analysis:', error)
+      toast.error(error.response?.data?.error || 'Failed to analyze file')
     } finally {
       setIsAnalyzing(false)
     }
@@ -107,7 +144,7 @@ export default function FileUpload() {
             ) : (
               <div className="space-y-2">
                 <p className="text-lg">Drag & drop an Excel file here, or click to select</p>
-                <p className="text-sm text-muted-foreground">Supports .xlsx and .xls files</p>
+                <p className="text-sm text-muted-foreground">Supports .xlsx files only</p>
               </div>
             )}
           </div>
@@ -143,7 +180,7 @@ export default function FileUpload() {
 
           <Button 
             className="flex-1" 
-            onClick={handleAnalyze} 
+            onClick={handleAnalysis} 
             disabled={!filePath || isAnalyzing}
           >
             {isAnalyzing ? (

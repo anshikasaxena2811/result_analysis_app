@@ -3,6 +3,7 @@ import Landing from './appComponents/LandingPage'
 import FileUpload from './appComponents/FileUpload'
 import { ThemeProvider } from './components/ThemeProvider'
 import { Toaster } from 'sonner'
+import AnalysisResults from './appComponents/AnalysisResults'
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/upload" element={<FileUpload />} />
+          <Route path="/results" element={<AnalysisResults />} />
         </Routes>
       </Router>
       <Toaster richColors position="top-center" />

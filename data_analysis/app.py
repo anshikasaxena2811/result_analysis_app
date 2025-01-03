@@ -24,6 +24,7 @@ def analyze():
             return jsonify({'error': 'No data provided'}), 400
 
         file_path = data.get('file_path')
+        print(file_path)
         if not file_path:
             return jsonify({'error': 'No file path provided'}), 400
 

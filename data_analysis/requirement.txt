@@ -5,3 +5,4 @@ seaborn
 matplotlib
 xlsxwriter
 Flask
+xlrd>=2.0.1

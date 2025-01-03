@@ -62,29 +62,29 @@ def analyze_marks(file_path):
     # Array to store the paths of the generated files
     generated_files = []
     
-    # Create output directories
-    output_dir = os.path.join("assets", "output_files")
-    averages_dir = os.path.join(output_dir, "averages")
-    top_five_dir = os.path.join(output_dir, "top_five")
+    # Create output directories with absolute paths
+    output_dir = os.path.abspath(os.path.join("assets", "output_files"))
+    averages_dir = os.path.abspath(os.path.join(output_dir, "averages"))
+    top_five_dir = os.path.abspath(os.path.join(output_dir, "top_five"))
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(averages_dir, exist_ok=True)
     os.makedirs(top_five_dir, exist_ok=True)
     
     # Create total_students_marks directory inside output_files folder
-    total_marks_dir = os.path.join(output_dir, "total_students_marks")
+    total_marks_dir = os.path.abspath(os.path.join(output_dir, "total_students_marks"))
     os.makedirs(total_marks_dir, exist_ok=True)
     
-    # Process for each identifier (T, I, E)
-    identifiers = ['T', 'I', 'E']
-    all_marks = []
-    
     # Create analysis report directory only if processing Total marks
-    report_dir = os.path.join("assets", "output_files", "analysis_report")
+    report_dir = os.path.abspath(os.path.join("assets", "output_files", "analysis_report"))
     os.makedirs(report_dir, exist_ok=True)
     
     
     # Dictionary to store report only for Total marks
     all_reports = {}
+    
+    # Process for each identifier (T, I, E)
+    identifiers = ['T', 'I', 'E']
+    all_marks = []
     
     for identifier in identifiers:
         # Load and process data for each identifier
@@ -130,7 +130,7 @@ def analyze_marks(file_path):
             df1 = df1.loc[:, ~df1.columns.str.contains("-")]
         
         # Save complete dataframe before dropping NA rows
-        marks_file = os.path.join(total_marks_dir, f"{identifier}_total_marks.xlsx")
+        marks_file = os.path.abspath(os.path.join(total_marks_dir, f"{identifier}_total_marks.xlsx"))
         df1.to_excel(marks_file, index=False)
         generated_files.append(marks_file)
         print(f"Total marks for {identifier} saved to {marks_file}")
@@ -152,12 +152,12 @@ def analyze_marks(file_path):
         #range 
         if identifier in ['E', 'T']:
             # Create marks distribution directory
-            distribution_dir = os.path.join(output_dir, "marks_distribution")
+            distribution_dir = os.path.abspath(os.path.join(output_dir, "marks_distribution"))
             os.makedirs(distribution_dir, exist_ok=True)
             
             # Create PDF and Excel files with identifier prefix
            # pdf_file = os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.pdf")
-            excel_file = os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.xlsx")
+            excel_file = os.path.abspath(os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.xlsx"))
             
             # Create ranges based on identifier
             if identifier == 'E':
@@ -325,7 +325,7 @@ def analyze_marks(file_path):
                 })
 
                 # Save to Excel with formatting
-                top_five_file = os.path.join(top_five_dir, "top_five_students.xlsx")
+                top_five_file = os.path.abspath(os.path.join(top_five_dir, "top_five_students.xlsx"))
                 
                 with pd.ExcelWriter(top_five_file, engine='xlsxwriter') as writer:
                     top_five_df.to_excel(writer, index=False)
@@ -382,14 +382,14 @@ def analyze_marks(file_path):
                 generated_files.append(top_five_file)
 
                 # Add new code for subject-wise toppers
-                subject_toppers_dir = os.path.join(output_dir, "subject_toppers")
+                subject_toppers_dir = os.path.abspath(os.path.join(output_dir, "subject_toppers"))
                 os.makedirs(subject_toppers_dir, exist_ok=True)
                 
                 # Get subject marks columns
                 subject_columns = df1.iloc[:, 3:-4].columns
                 
                 # Create Excel file for subject-wise toppers
-                subject_toppers_file = os.path.join(subject_toppers_dir, "subject_wise_toppers.xlsx")
+                subject_toppers_file = os.path.abspath(os.path.join(subject_toppers_dir, "subject_wise_toppers.xlsx"))
                 
                 with pd.ExcelWriter(subject_toppers_file, engine='xlsxwriter') as writer:
                     workbook = writer.book
@@ -516,7 +516,7 @@ def analyze_marks(file_path):
     final_df['Faculty_Name'] = ''  # Add empty column for faculty names
 
     # Create a single Excel workbook for all data
-    consolidated_excel = os.path.join(averages_dir, "average_marks.xlsx")
+    consolidated_excel = os.path.abspath(os.path.join(averages_dir, "average_marks.xlsx"))
     
     with pd.ExcelWriter(consolidated_excel, engine='xlsxwriter') as writer:
         # Save course averages
@@ -548,7 +548,7 @@ def analyze_marks(file_path):
     print(f"Average marks Excel report saved to: {consolidated_excel}")
     generated_files.append(consolidated_excel)
 
-    report_file = os.path.join(report_dir, "analysis_report.xlsx")
+    report_file = os.path.abspath(os.path.join(report_dir, "analysis_report.xlsx"))
     
     with pd.ExcelWriter(report_file, engine='xlsxwriter') as writer:
         # Only process 'T' identifier
