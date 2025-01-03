@@ -1,6 +1,0 @@
-ipykernel
-numpy
-openpyxl
-seaborn
-matplotlib
-xlsxwriter
