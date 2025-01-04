@@ -6,3 +6,5 @@ matplotlib
 xlsxwriter
 Flask
 xlrd>=2.0.1
+boto3
+python-dotenv

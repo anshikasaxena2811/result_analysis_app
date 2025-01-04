@@ -46,30 +46,30 @@ export default function AnalysisResults() {
     return 'Other'
   }
 
-  const handleDownload = async (filePath) => {
+  const handleDownload = async (fileUrl) => {
     try {
-      const filename = filePath.split('/').pop()
-      const response = await fetch(`http://localhost:8000/download?filePath=${encodeURIComponent(filePath)}`)
-      
-      if (!response.ok) {
-        throw new Error('Download failed')
-      }
-      
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      toast.success('File downloaded successfully')
+        const response = await fetch(fileUrl);
+        
+        if (!response.ok) {
+            throw new Error('Download failed');
+        }
+        
+        const blob = await response.blob();
+        const filename = fileUrl.split('/').pop();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('File downloaded successfully');
     } catch (error) {
-      console.error('Download failed:', error)
-      toast.error('Failed to download file')
+        console.error('Download failed:', error);
+        toast.error('Failed to download file');
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-background">

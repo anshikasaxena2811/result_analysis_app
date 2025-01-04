@@ -37,11 +37,11 @@ def analyze():
             return jsonify({'error': f'File not found at path: {file_path}'}), 404
 
         # Pass both file_path and report_details to analyze_marks
-        analysis_result, generated_files = analyze_marks(file_path, report_details)
+        analysis_result, s3_urls = analyze_marks(file_path, report_details)
         
         return jsonify({
             'result': analysis_result.to_dict(orient='records'),
-            'generated_files': generated_files,
+            'generated_files': s3_urls,  # Now sending S3 URLs instead of local paths
             'message': 'Analysis completed successfully'
         }), 200
 
