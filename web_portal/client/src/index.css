@@ -89,3 +89,31 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Add these styles to handle Excel-like appearance */
+.handsontable {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.handsontable td {
+  white-space: pre-wrap;
+  vertical-align: middle;
+}
+
+.handsontable .htMiddle {
+  vertical-align: middle;
+}
+
+.handsontable .htCenter {
+  text-align: center;
+}
+
+/* Custom cell styles for Excel-like borders */
+.handsontable td.custom-cell {
+  padding: 4px 8px;
+}
+
+/* Style for merged cells */
+.handsontable .merged {
+  background-color: inherit !important;
+}
