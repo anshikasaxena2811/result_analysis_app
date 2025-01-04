@@ -55,7 +55,7 @@ def generate_analysis_report(df, identifier):
     
     return report_df
 
-def analyze_marks(file_path):
+def analyze_marks(file_path, report_details):
     pd.set_option("mode.copy_on_write", True)
     file_path = os.path.normpath(file_path)
 
@@ -555,6 +555,59 @@ def analyze_marks(file_path):
         identifier = 'T'
         report_df = all_reports[identifier]
         
+        workbook = writer.book
+        worksheet = workbook.add_worksheet(f'{identifier}_Analysis')
+        
+        # Define all formats needed
+        header_format = workbook.add_format({
+            'bold': True,
+            'align': 'center',
+            'valign': 'vcenter',
+            'font_size': 12,
+            'border': 0
+        })
+
+        analysis_header_format = workbook.add_format({
+            'bold': True,
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#D3D3D3'  # Light gray background
+        })
+
+        analysis_cell_format = workbook.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter'
+        })
+
+        analysis_alt_cell_format = workbook.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#F0F0F0'  # Slightly gray background for alternating rows
+        })
+        
+        # Write report details at the top
+        current_row = 0
+        
+        # Add report details
+        details_to_write = [
+            report_details['collegeName'],
+            f"PROGRAM: {report_details['program']}",
+            f"BATCH: {report_details['batch']}",
+            f"SEMESTER: {report_details['semester']}",
+            f"SESSION: {report_details['session']}",
+            f"DATE: {report_details['date']}"
+        ]
+        
+        for detail in details_to_write:
+            worksheet.merge_range(current_row, 0, current_row, 5, detail, header_format)
+            current_row += 1
+        
+        # Add a blank row for spacing
+        current_row += 1
+        
         # Create DataFrame with the desired structure
         total_students = report_df.loc[report_df['Category'] == 'Total Students', 'Number of Students'].iloc[0]
         passed_students = report_df.loc[report_df['Category'] == 'Passed Students', 'Number of Students'].iloc[0]
@@ -581,85 +634,24 @@ def analyze_marks(file_path):
         
         df_report = pd.DataFrame(data)
         
+        # Write the data starting from the current_row (after report details)
+        for idx, col in enumerate(df_report.columns):
+            worksheet.write(current_row, idx, col, analysis_header_format)
+            for row_idx, value in enumerate(df_report[col]):
+                format_to_use = analysis_cell_format if row_idx % 2 == 0 else analysis_alt_cell_format
+                worksheet.write(current_row + 1 + row_idx, idx, value, format_to_use)
+        
         # Calculate pass percentage
         pass_percentage = (passed_students / total_students * 100) if total_students > 0 else 0
         
-        # Write to Excel
-        df_report.to_excel(writer, sheet_name=f'{identifier}_Analysis', index=False)
-        worksheet = writer.sheets[f'{identifier}_Analysis']
-        
-        # Add formatting
-        workbook = writer.book
-        analysis_header_format = workbook.add_format({
-            'bold': True,
-            'border': 1,
-            'align': 'center',
-            'valign': 'vcenter',
-            'bg_color': '#1F497D',
-            'font_color': 'white',
-            'text_wrap': True
-        })
-        
-        analysis_cell_format = workbook.add_format({
-            'border': 1,
-            'align': 'center',
-            'valign': 'vcenter',
-            'bg_color': '#DCE6F1'
-        })
+        # Update the row position for pass percentage
+        final_row = current_row + len(df_report) + 2
+        worksheet.write(final_row, 0, 'Pass Percentage', analysis_header_format)
+        worksheet.write(final_row, 1, f': {pass_percentage:.2f}%', analysis_cell_format)
 
-        analysis_alt_cell_format = workbook.add_format({
-            'border': 1,
-            'align': 'center',
-            'valign': 'vcenter',
-            'bg_color': '#FFFFFF'
-        })
-
-        # Apply formats to analysis report
-        for row_num in range(df_report.shape[0]):
-            format_to_use = analysis_cell_format if row_num % 2 == 0 else analysis_alt_cell_format
-            for col_num in range(df_report.shape[1]):
-                worksheet.write(row_num + 1, col_num, 
-                               df_report.iloc[row_num, col_num], 
-                               format_to_use)
-
-        # Add pass percentage at the bottom
-        worksheet.write(df_report.shape[0] + 2, 0, 'Pass Percentage', analysis_header_format)
-        worksheet.write(df_report.shape[0] + 2, 1, f': {pass_percentage:.2f}%', analysis_cell_format)
-        
         # Add new sheet for high performers (CPI > 75)
-        workbook = writer.book
         worksheet = workbook.add_worksheet('High Performers')
         
-        header_format = workbook.add_format({
-            'bold': True,
-            'border': 1,
-            'align': 'center',
-            'valign': 'vcenter',
-            'bg_color': '#D3D3D3'  # Light gray background
-        })
-        
-        cell_format = workbook.add_format({
-            'border': 1,
-            'align': 'center',
-            'valign': 'vcenter'
-        })
-
-        # Set column widths
-        worksheet.set_column('A:A', 8)   # Rank
-        worksheet.set_column('B:B', 15)  # Enrollment No.
-        worksheet.set_column('C:C', 25)  # Student Name
-        worksheet.set_column('D:D', 15)  # Total Marks
-        worksheet.set_column('E:E', 15)  # Maximum Marks
-        worksheet.set_column('F:F', 10)  # CPI
-
-        # Write title
-        worksheet.merge_range('A1:F1', 'Students with CPI Above 75', header_format)
-
-        # Write headers
-        headers = ['Rank', 'Enrollment No.', 'Student Name', 'Total Marks', 'Maximum Marks', 'CPI']
-        for col, header in enumerate(headers):
-            worksheet.write(1, col, header, header_format)
-
         # Get students with CPI > 75
         high_performers = df1[pd.to_numeric(df1[cpi_col], errors='coerce') > 75].sort_values(
             by=cpi_col, ascending=False
@@ -670,22 +662,21 @@ def analyze_marks(file_path):
             cpi_col
         ]]
 
+        # Write headers
+        headers = ['Rank', 'Enrollment No.', 'Student Name', 'Total Marks', 'Maximum Marks', 'CPI']
+        for col, header in enumerate(headers):
+            worksheet.write(1, col, header, analysis_header_format)
+
         # Write data rows
         for idx, row in enumerate(high_performers.values):
-            worksheet.write(idx + 2, 0, idx + 1, cell_format)       # Rank
-            worksheet.write(idx + 2, 1, row[0], cell_format)        # Enrollment No.
-            worksheet.write(idx + 2, 2, row[1], cell_format)        # Student Name
-            worksheet.write(idx + 2, 3, row[2], cell_format)        # Total Marks
-            worksheet.write(idx + 2, 4, len(df1.iloc[:, 3:-4].columns) * 100, cell_format)  # Maximum Marks
-            worksheet.write(idx + 2, 5, row[3], cell_format)        # CPI
-
-        print(f"High performers (CPI > 75) sheet added to analysis report")
+            worksheet.write(idx + 2, 0, idx + 1, analysis_cell_format)       # Rank
+            worksheet.write(idx + 2, 1, row[0], analysis_cell_format)        # Enrollment No.
+            worksheet.write(idx + 2, 2, row[1], analysis_cell_format)        # Student Name
+            worksheet.write(idx + 2, 3, row[2], analysis_cell_format)        # Total Marks
+            worksheet.write(idx + 2, 4, len(df1.iloc[:, 3:-4].columns) * 100, analysis_cell_format)  # Maximum Marks
+            worksheet.write(idx + 2, 5, row[3], analysis_cell_format)        # CPI
 
     print(f"Analysis report saved to {report_file}")
     generated_files.append(report_file)
-
-    print(f"\nGenerated files:")
-    for file in generated_files:
-        print(f"- {file}")
 
     return final_df, generated_files

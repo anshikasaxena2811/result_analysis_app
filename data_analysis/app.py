@@ -18,33 +18,35 @@ CORS(app, resources={
 @app.route('/analyze', methods=['POST'])
 def analyze():
     try:
-        # Get the file path from the request
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
+        print("\n=== Received Data from Frontend ===")
+        print("File Path:", data.get('file_path'))
+        print("Report Details:", data.get('report_details'))
+        print("================================\n")
 
         file_path = data.get('file_path')
-        print(file_path)
+        report_details = data.get('report_details')
+        
         if not file_path:
             return jsonify({'error': 'No file path provided'}), 400
+        
+        if not report_details:
+            return jsonify({'error': 'No report details provided'}), 400
 
         if not os.path.exists(file_path):
             return jsonify({'error': f'File not found at path: {file_path}'}), 404
 
-        # Call the analyze_marks function and get both the result and generated files
-        analysis_result, generated_files = analyze_marks(file_path)
-        
-        # Convert the result DataFrame to a dictionary for JSON response
-        result_dict = analysis_result.to_dict(orient='records')
+        # Pass both file_path and report_details to analyze_marks
+        analysis_result, generated_files = analyze_marks(file_path, report_details)
         
         return jsonify({
-            'result': result_dict,
+            'result': analysis_result.to_dict(orient='records'),
             'generated_files': generated_files,
             'message': 'Analysis completed successfully'
         }), 200
 
     except Exception as e:
-        print(f"Error during analysis: {str(e)}")  # Log the error
+        print(f"Error during analysis: {str(e)}")
         return jsonify({
             'error': 'Analysis failed',
             'details': str(e)

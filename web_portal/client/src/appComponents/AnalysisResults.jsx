@@ -1,14 +1,17 @@
 import { Button } from "@/components/ui/button"
-import { Download, ArrowLeft } from "lucide-react"
+import { Download, ArrowLeft, Moon, Sun } from "lucide-react"
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from "sonner"
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
+import { toggleTheme } from '../store/themeSlice'
 
 export default function AnalysisResults() {
   const location = useLocation()
   const navigate = useNavigate()
   const generatedFiles = useSelector((state) => state.files.generatedFiles)
   const { result } = location.state || { result: [] }
+  const dispatch = useDispatch()
+  const { mode } = useSelector((state) => state.theme)
   
   console.log('Location state:', location.state)
   
@@ -70,6 +73,24 @@ export default function AnalysisResults() {
 
   return (
     <div className="min-h-screen bg-background">
+      <nav className="border-b">
+        <div className="container max-w-6xl py-4 px-4 flex justify-between items-center">
+          <h2 className="text-xl font-bold">Analysis Results</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => dispatch(toggleTheme())}
+            aria-label="Toggle theme"
+          >
+            {mode === 'light' ? (
+              <Moon className="h-5 w-5" />
+            ) : (
+              <Sun className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+      </nav>
+      
       <div className="container max-w-6xl py-8 px-4">
         <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" />
