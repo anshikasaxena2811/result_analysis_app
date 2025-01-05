@@ -1,20 +1,29 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card'
-import { useAuth } from '../../hooks/useAuth'
+import axios from 'axios'
+import { setUser, setLoading, setError } from '../../store/userSlice'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../../components/ui/card'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const dispatch = useDispatch()
+  const { isLoading } = useSelector((state) => state.user)
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
-  const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
     setFormData({
@@ -25,17 +34,24 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
+    dispatch(setLoading(true))
 
     try {
-      const result = await login(formData)
-      toast.success(result.message || 'Logged in successfully')
-      navigate('/upload')
+      const response = await axios.post('http://localhost:8000/api/users/login', formData, {
+        withCredentials: true
+      })
+      
+      if (response.data.success) {
+        dispatch(setUser(response.data.user))
+        toast.success('Logged in successfully')
+        navigate('/upload')
+      }
     } catch (error) {
-      toast.error(error.message || 'Login failed. Please check your credentials.')
       console.error('Login error:', error)
+      dispatch(setError(error.response?.data?.message || 'Failed to login'))
+      toast.error(error.response?.data?.message || 'Failed to login')
     } finally {
-      setLoading(false)
+      dispatch(setLoading(false))
     }
   }
 
@@ -43,9 +59,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Welcome Back</CardTitle>
+          <CardTitle>Login</CardTitle>
           <CardDescription>
-            Sign in to your account to continue
+            Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -57,9 +73,9 @@ export default function Login() {
                 name="email"
                 type="email"
                 placeholder="Enter your email"
-                required
                 value={formData.email}
                 onChange={handleChange}
+                required
               />
             </div>
             <div className="space-y-2">
@@ -69,9 +85,9 @@ export default function Login() {
                 name="password"
                 type="password"
                 placeholder="Enter your password"
-                required
                 value={formData.password}
                 onChange={handleChange}
+                required
               />
             </div>
           </CardContent>
@@ -79,11 +95,11 @@ export default function Login() {
             <Button 
               type="submit" 
               className="w-full"
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-sm text-center text-muted-foreground">
               Don't have an account?{' '}
               <Link to="/register" className="text-primary hover:underline">
                 Register

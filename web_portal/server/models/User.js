@@ -74,7 +74,32 @@ userSchema.methods.removeAllTokens = async function() {
 
 // Method to check if token exists and is valid
 userSchema.methods.hasValidToken = function(token) {
-  return this.tokens.some(t => t.token === token)
+  // Find the token in the user's tokens array
+  const tokenDoc = this.tokens.find(t => t.token === token);
+  
+  if (!tokenDoc) {
+    console.log('Token not found in user tokens');
+    return false;
+  }
+
+  // Add token expiry check (recommended)
+  const expiryTime = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+  const timeSinceLastUse = Date.now() - tokenDoc.lastUsed.getTime();
+  
+  if (timeSinceLastUse > expiryTime) {
+    console.log('Token expired due to inactivity');
+    // Automatically remove expired token
+    this.tokens = this.tokens.filter(t => t.token !== token);
+    this.save().catch(err => console.error('Error removing expired token:', err));
+    return false;
+  }
+
+  // Update lastUsed timestamp
+  tokenDoc.lastUsed = new Date();
+  // Use save() without await since we're in a non-async function
+  this.save().catch(err => console.error('Error updating token lastUsed:', err));
+
+  return true;
 }
 
 // Update lastLogin timestamp

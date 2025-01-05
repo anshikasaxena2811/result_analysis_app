@@ -5,6 +5,7 @@ import {
   logout,
   getProfile,
   updateProfile,
+  changePassword,
   getAllUsers,
   deleteUser
 } from '../controllers/userController.js'
@@ -18,11 +19,12 @@ userRouter.post('/api/users/login', login)
 userRouter.post('/api/users/logout', logout)
 
 // Protected routes
-userRouter.get('/profile', protect, getProfile)
-userRouter.put('/profile', protect, updateProfile)
+userRouter.get('/api/users/profile', protect, getProfile)
+userRouter.put('/api/users/profile', protect, updateProfile)
+userRouter.put('/api/users/change-password', protect, changePassword)
 
 // Admin only routes
-userRouter.get('/', protect, authorize('admin'), getAllUsers)
-userRouter.delete('/:id', protect, authorize('admin'), deleteUser)
+userRouter.get('/api/users', protect, authorize('admin'), getAllUsers)
+userRouter.delete('/api/users/:id', protect, authorize('admin'), deleteUser)
 
 export default userRouter 

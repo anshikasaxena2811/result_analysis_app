@@ -6,11 +6,9 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
-import { useAuth } from '../../hooks/useAuth'
-
+import axios from 'axios'
 export default function Register() {
   const navigate = useNavigate()
-  const { register } = useAuth()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,7 +37,7 @@ export default function Register() {
     setLoading(true)
 
     try {
-      const result = await register(formData)
+      const result = await axios.post('http://localhost:8000/api/users/register', formData)
       toast.success(result.message || 'Registered successfully')
       navigate('/login')
     } catch (error) {

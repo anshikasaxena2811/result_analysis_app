@@ -60,19 +60,26 @@ export const register = async (req, res, next) => {
 // Login user
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const userAgent = req.headers['user-agent'] || 'unknown';
-
-    // Check if user exists
-    const user = await User.findOne({ email });
-    if (!user) {
-      return next(createError(404, 'User not found'));
+    const { email, password } = req.body
+    console.log("email => ", email)
+    console.log("password => ", password)
+    // Validate email and password are provided
+    if (!email || !password) {
+      return next(createError(400, 'Please provide email and password'))
     }
 
+    // Check if user exists
+    const user = await User.findOne({ email })
+    if (!user) {
+      return next(createError(404, 'User not found'))
+    }
+
+    console.log("user => ", user)
+
     // Check password
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    const isPasswordCorrect = await bcrypt.compare(password, user.password)
     if (!isPasswordCorrect) {
-      return next(createError(400, 'Invalid credentials'));
+      return next(createError(400, 'Invalid credentials'))
     }
 
     // Create token
@@ -80,16 +87,19 @@ export const login = async (req, res, next) => {
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRE }
-    );
+    )
 
-    // Add token to user's tokens array
-    await user.addToken(token, userAgent);
+    // Add token to user's tokens array with device info
+    const device = req.headers['user-agent'] || 'unknown device';
+    const savedToken = await user.addToken(token, device);
+    console.log("savedToken => ", savedToken)
 
-    // Update last login
+    // Update last login timestamp
     await user.updateLastLogin();
 
+    console.log("token => ", token)
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = user._doc;
+    const { password: _, ...userWithoutPassword } = user._doc
 
     // Set cookie
     res.cookie('token', token, {
@@ -97,16 +107,16 @@ export const login = async (req, res, next) => {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    });
+    })
 
     res.status(200).json({
       success: true,
-      data: userWithoutPassword
-    });
+      user: userWithoutPassword
+    })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
 
 // Get current user profile
 export const getProfile = async (req, res, next) => {
@@ -124,38 +134,26 @@ export const getProfile = async (req, res, next) => {
 // Update user profile
 export const updateProfile = async (req, res, next) => {
   try {
-    const { name, email, department, currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, ...updateFields } = req.body;
     const userId = req.user.id;
 
     // Get user
     const user = await User.findById(userId);
 
     // If updating email, check if new email already exists
-    if (email && email !== user.email) {
-      const emailExists = await User.findOne({ email });
+    if (updateFields.email && updateFields.email !== user.email) {
+      const emailExists = await User.findOne({ email: updateFields.email });
       if (emailExists) {
         return next(createError(400, 'Email already in use'));
       }
     }
 
-    // If updating password
-    if (currentPassword && newPassword) {
-      // Verify current password
-      const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
-      if (!isPasswordCorrect) {
-        return next(createError(400, 'Current password is incorrect'));
+    // Update only the fields that are present in the request
+    Object.keys(updateFields).forEach(field => {
+      if (updateFields[field] !== undefined) {
+        user[field] = updateFields[field];
       }
-
-      // Hash new password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(newPassword, salt);
-      user.password = hashedPassword;
-    }
-
-    // Update fields
-    user.name = name || user.name;
-    user.email = email || user.email;
-    user.department = department || user.department;
+    });
 
     // Save updates
     const updatedUser = await user.save();
@@ -164,6 +162,40 @@ export const updateProfile = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: userWithoutPassword
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Separate password change function
+export const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!currentPassword || !newPassword) {
+      return next(createError(400, 'Please provide both current and new password'));
+    }
+
+    const user = await User.findById(userId);
+
+    // Verify current password
+    const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordCorrect) {
+      return next(createError(400, 'Current password is incorrect'));
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    user.password = hashedPassword;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully'
     });
   } catch (error) {
     next(error);

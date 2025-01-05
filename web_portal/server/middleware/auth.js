@@ -5,19 +5,13 @@ import User from '../models/User.js';
 // Protect routes
 export const protect = async (req, res, next) => {
   try {
-    let token;
-
     // Get token from cookie
-    if (req.cookies.token) {
-      token = req.cookies.token;
-    }
+    const token = req?.cookies?.token
 
     // Check if token exists
     if (!token) {
-      return next(createError(401, 'Not authorized to access this route'));
+      return next(createError(401, 'No token provided'));
     }
-
-    try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
@@ -28,9 +22,11 @@ export const protect = async (req, res, next) => {
         return next(createError(401, 'User no longer exists'));
       }
 
-      // Check if user has this token
-      if (!user.hasValidToken(token)) {
-        return next(createError(401, 'Token is no longer valid'));
+      // Check if token is valid
+      const isValidToken = user.hasValidToken(token);
+      
+      if (!isValidToken) {
+        return next(createError(401, 'Token has expired or is no longer valid'));
       }
 
       // Check if user changed password after token was issued
@@ -42,14 +38,12 @@ export const protect = async (req, res, next) => {
       const tokenDoc = user.tokens.find(t => t.token === token);
       if (tokenDoc) {
         tokenDoc.lastUsed = new Date();
-        await user.save();
+        await User.findByIdAndUpdate(user._id, { lastActive: new Date() });
       }
 
+      // Update the req.user with fresh user data
       req.user = user;
       next();
-    } catch (error) {
-      return next(createError(401, 'Not authorized to access this route'));
-    }
   } catch (error) {
     next(error);
   }
