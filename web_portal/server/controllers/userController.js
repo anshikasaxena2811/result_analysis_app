@@ -61,8 +61,6 @@ export const register = async (req, res, next) => {
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body
-    console.log("email => ", email)
-    console.log("password => ", password)
     // Validate email and password are provided
     if (!email || !password) {
       return next(createError(400, 'Please provide email and password'))
@@ -74,30 +72,36 @@ export const login = async (req, res, next) => {
       return next(createError(404, 'User not found'))
     }
 
-    console.log("user => ", user)
-
     // Check password
     const isPasswordCorrect = await bcrypt.compare(password, user.password)
     if (!isPasswordCorrect) {
       return next(createError(400, 'Invalid credentials'))
     }
 
-    // Create token
+    // Create token - Let's add console.logs to check the payload
+    const tokenPayload = { id: user._id, role: user.role };
+    console.log('Token payload:', tokenPayload);
+    
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      tokenPayload,
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRE }
-    )
+    );
 
+    // Verify token contents
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Decoded token:', decodedToken);
+
+    console.log("token punched successfully")
+    console.log("user => ", user)
+    console.log("token id => ", token.id)
     // Add token to user's tokens array with device info
     const device = req.headers['user-agent'] || 'unknown device';
-    const savedToken = await user.addToken(token, device);
-    console.log("savedToken => ", savedToken)
+    await user.addToken(token, device);
 
     // Update last login timestamp
     await user.updateLastLogin();
 
-    console.log("token => ", token)
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user._doc
 
@@ -120,6 +124,7 @@ export const login = async (req, res, next) => {
 
 // Get current user profile
 export const getProfile = async (req, res, next) => {
+  console.log("req.user => ", req.user)
   try {
     const user = await User.findById(req.user.id).select('-password');
     res.status(200).json({
@@ -205,14 +210,24 @@ export const changePassword = async (req, res, next) => {
 // Logout user
 export const logout = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
-    
-    // Remove token from user's tokens array
-    await req.user.removeToken(token);
+
+    const token = req.cookies.token
+    // If token exists, decode it to check contents and remove it from the user's tokens array
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Decoded logout token:', decoded);
+        const user  = await User.findByIdAndUpdate(decoded.id);
+        await user.removeToken(token);
+      } catch (err) {
+        console.log('Token decode error:', err);
+      }
+    }
 
     // Clear cookie
-    res.cookie('token', 'none', {
-      expires: new Date(Date.now() + 10 * 1000),
+    res.cookie('token', null, {
+      //cookie will expire now
+      expires: new Date(Date.now()),
       httpOnly: true
     });
 
@@ -231,7 +246,7 @@ export const logoutAll = async (req, res, next) => {
     await req.user.removeAllTokens();
 
     // Clear cookie
-    res.cookie('token', 'none', {
+    res.cookie('token', null, {
       expires: new Date(Date.now() + 10 * 1000),
       httpOnly: true
     });
@@ -272,6 +287,72 @@ export const getAllUsers = async (req, res, next) => {
       success: true,
       count: users.length,
       data: users
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getLoginDevices = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const currentToken = req.cookies.token;
+    
+    // Filter out the current device and map the remaining devices
+    const devices = user.tokens
+      .filter(token => token.token !== currentToken) // Exclude current device
+      .map(token => ({
+        id: token._id,
+        device: token.device,
+        lastUsed: token.lastUsed
+      }));
+
+    res.status(200).json({
+      success: true,
+      devices
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const removeDevice = async (req, res, next) => {
+  try {
+    const { deviceId } = req.params;
+    const user = await User.findById(req.user._id);
+    const currentToken = req.cookies.token;
+    
+    // Find the token document
+    const tokenDoc = user.tokens.id(deviceId);
+    if (!tokenDoc) {
+      return next(createError(404, 'Device not found'));
+    }
+
+    // Prevent removing current device through this endpoint
+    if (tokenDoc.token === currentToken) {
+      return next(createError(400, 'Cannot remove current device. Use logout instead.'));
+    }
+
+    // Remove the specific token
+    await user.removeToken(tokenDoc.token);
+
+    res.status(200).json({
+      success: true,
+      message: 'Device removed successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const removeAllDevices = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    await user.removeAllTokens();
+
+    res.status(200).json({
+      success: true,
+      message: 'Logged out from all devices'
     });
   } catch (error) {
     next(error);

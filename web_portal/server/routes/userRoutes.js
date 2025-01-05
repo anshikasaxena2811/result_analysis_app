@@ -7,7 +7,10 @@ import {
   updateProfile,
   changePassword,
   getAllUsers,
-  deleteUser
+  deleteUser,
+  getLoginDevices,
+  removeDevice,
+  removeAllDevices
 } from '../controllers/userController.js'
 import { protect, authorize } from '../middleware/auth.js'
 
@@ -22,6 +25,11 @@ userRouter.post('/api/users/logout', logout)
 userRouter.get('/api/users/profile', protect, getProfile)
 userRouter.put('/api/users/profile', protect, updateProfile)
 userRouter.put('/api/users/change-password', protect, changePassword)
+
+// Device management routes
+userRouter.get('/api/users/devices', protect, getLoginDevices)
+userRouter.delete('/api/users/devices/:deviceId', protect, removeDevice)
+userRouter.delete('/api/users/devices', protect, removeAllDevices)
 
 // Admin only routes
 userRouter.get('/api/users', protect, authorize('admin'), getAllUsers)

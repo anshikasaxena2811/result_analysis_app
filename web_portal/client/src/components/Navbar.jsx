@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   User,
+  Users,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -34,7 +35,8 @@ export function Navbar() {
     }
   }
 
-  const navItems = [
+  // Protected nav items (only for logged-in users)
+  const protectedNavItems = [
     {
       name: 'Upload',
       path: '/upload',
@@ -52,12 +54,27 @@ export function Navbar() {
       path: '/profile',
       icon: <User className="h-5 w-5" />,
       roles: ['admin', 'faculty', 'student']
+    },
+  ]
+
+  // Public nav items (visible to all visitors)
+  const publicNavItems = [
+    {
+      name: 'Team',
+      path: '/team',
+      icon: <Users className="h-5 w-5" />,
     }
   ]
 
-  const filteredNavItems = navItems.filter(item => 
-    user && item.roles.includes(user.role)
-  )
+  // Filter protected items based on user role
+  const filteredProtectedItems = user 
+    ? protectedNavItems.filter(item => item.roles.includes(user.role))
+    : [];
+
+  // Combine protected and public items
+  const allNavItems = user 
+    ? [...filteredProtectedItems, ...publicNavItems]
+    : publicNavItems;
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -67,7 +84,7 @@ export function Navbar() {
             <span className="font-bold">Result Analysis</span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
-            {filteredNavItems.map(item => (
+            {allNavItems.map(item => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -131,7 +148,7 @@ export function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden">
           <div className="space-y-1 px-2 pb-3 pt-2">
-            {filteredNavItems.map(item => (
+            {allNavItems.map(item => (
               <Link
                 key={item.path}
                 to={item.path}

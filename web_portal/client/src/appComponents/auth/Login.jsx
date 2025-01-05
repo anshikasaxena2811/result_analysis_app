@@ -48,8 +48,8 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Login error:', error)
-      dispatch(setError(error.response?.data?.message || 'Failed to login'))
-      toast.error(error.response?.data?.message || 'Failed to login')
+      dispatch(setError(error.response.data.error))
+      toast.error(error.response.data.error)
     } finally {
       dispatch(setLoading(false))
     }

@@ -1,10 +1,15 @@
 import mongoose from 'mongoose'
+import User from '../models/User.js'
+import bcrypt from 'bcryptjs'
 
 export const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI)
 
     console.log(`MongoDB Connected: ${conn.connection.host}`)
+
+    // Seed admin user after connection
+    await seedAdmin()
 
     // Handle connection errors after initial connection
     mongoose.connection.on('error', (err) => {
@@ -43,6 +48,32 @@ export const disconnectDB = async () => {
     console.log('MongoDB disconnected')
   } catch (error) {
     console.error(`Error disconnecting from MongoDB: ${error.message}`)
+    throw error
+  }
+}
+
+export const seedAdmin = async () => {
+  try {
+    // Check if admin already exists
+    const adminExists = await User.findOne({ email: 'admin@admin.admin' })
+    
+    if (!adminExists) {
+      // Hash the password
+      const salt = await bcrypt.genSalt(10)
+      const hashedPassword = await bcrypt.hash('iamadmin123', salt)
+
+      // Create admin user
+      await User.create({
+        name: 'Admin',
+        email: 'admin@admin.admin',
+        password: hashedPassword,
+        role: 'admin'
+      })
+
+      console.log('Admin user seeded successfully')
+    }
+  } catch (error) {
+    console.error('Error seeding admin user:', error)
     throw error
   }
 } 

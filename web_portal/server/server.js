@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import { S3 } from '@aws-sdk/client-s3'
 import userRoutes from './routes/userRoutes.js'
+import fileRoutes from './routes/fileRoutes.js'
 import express from 'express'
 import multer from 'multer'
 import cors from 'cors'
@@ -49,6 +50,7 @@ app.options('*', cors())
 
 // Routes
 app.use('/', userRoutes)
+app.use('/', fileRoutes)
 
 // Configure S3
 const s3 = new S3({
@@ -111,35 +113,29 @@ app.post('/upload', upload.single('file'), (req, res) => {
 })
 
 // Add new route for file download
-app.post('/api/files/download', async (req, res) => {
+app.get('/api/files/download/:key', async (req, res) => {
   try {
-    const { fileUrl } = req.body
+    const key = req.params.key;
     
-    // Extract bucket and key from S3 URL
-    const url = new URL(fileUrl)
-    const bucket = url.hostname.split('.')[0]
-    const key = decodeURIComponent(url.pathname.substring(1))
-
-    // Get the file from S3
     const command = {
-      Bucket: bucket,
+      Bucket: process.env.AWS_BUCKET_NAME,
       Key: key
-    }
+    };
 
-    const fileStream = await s3.getObject(command)
-    const file = await fileStream.Body.transformToByteArray()
+    const fileStream = await s3.getObject(command);
+    const file = await fileStream.Body.transformToByteArray();
 
     // Set appropriate headers
-    res.setHeader('Content-Type', fileStream.ContentType)
-    res.setHeader('Content-Disposition', `attachment; filename=${key.split('/').pop()}`)
+    res.setHeader('Content-Type', fileStream.ContentType);
+    res.setHeader('Content-Disposition', `attachment; filename=${key.split('/').pop()}`);
     
     // Send the file
-    res.send(Buffer.from(file))
+    res.send(Buffer.from(file));
   } catch (error) {
-    console.error('Download error:', error)
-    res.status(500).json({ error: 'Failed to download file' })
+    console.error('Download error:', error);
+    res.status(500).json({ error: 'Failed to download file' });
   }
-})
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

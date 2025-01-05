@@ -12,9 +12,24 @@ import {
   CardTitle,
 } from '../components/ui/card'
 import { useSelector, useDispatch } from 'react-redux'
-import { clearUser } from '../store/userSlice'
+import axios from 'axios'
+import { Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { setUser, clearUser } from '../store/userSlice'
 
 export default function Profile() {
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const { user } = useSelector((state) => state.user)
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/')
+    }
+  }, [user, navigate])
+
+  console.log("user => ", user)
+
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -28,9 +43,33 @@ export default function Profile() {
     confirmPassword: ''
   })
 
-  const dispatch = useDispatch()
-  const { user } = useSelector((state) => state.user)
+  const [devices, setDevices] = useState([])
+  const [deviceLoading, setDeviceLoading] = useState(false)
 
+  useEffect(() => {
+    async function fetchProfile() {
+      console.log("fetching profile")
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/profile`, {
+          withCredentials: true
+      })
+      console.log("response => ", response)
+
+      if (response.status !== 200) {
+        throw new Error(response.message || 'Failed to fetch profile')
+      }
+
+      dispatch(setUser(response.data.data))
+    } catch (error) {
+      toast.error(error.message || 'Failed to fetch profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  fetchProfile()
+
+  }, [])
   
 
   useEffect(() => {
@@ -43,6 +82,10 @@ export default function Profile() {
       }))
     }
   }, [user])
+
+  useEffect(() => {
+    fetchDevices()
+  }, [])
 
   const handleChange = (e) => {
     setFormData({
@@ -63,19 +106,17 @@ export default function Profile() {
     setLoading(true)
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(formData)
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/users/profile`,{
+        name: formData.name,
+        email: formData.email,
+        program: formData.program
+      }, {
+        withCredentials: true
       })
+      console.log("response => ", response)
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to update profile')
+      if (response.status !== 200) {
+        throw new Error(response.message || 'Failed to update profile')
       }
 
       toast.success('Profile updated successfully')
@@ -96,23 +137,20 @@ export default function Profile() {
 
     setLoading(true)
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/change-password`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword
-        })
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/users/change-password`, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      }, {
+        withCredentials: true
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to update password')
+      console.log("response => ", response)
+      if (response.status !== 200) {
+        throw new Error(response.message || 'Failed to update password')
       }
+
+      toast.success('Password updated successfully')
+
+      // Clear password fields
 
       toast.success('Password updated successfully')
       
@@ -131,12 +169,56 @@ export default function Profile() {
 
   const handleLogout = async () => {
     try {
-      await logout()
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/users/logout`, {}, {
+        withCredentials: true
+      })
+      dispatch(clearUser())
       toast.success('Logged out successfully')
+      navigate('/')
     } catch (error) {
       toast.error('Failed to logout')
     }
   }
+
+  const fetchDevices = async () => {
+    setDeviceLoading(true)
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/devices`, {
+        withCredentials: true
+      })
+      setDevices(response.data.devices)
+    } catch (error) {
+      toast.error('Failed to fetch devices')
+    } finally {
+      setDeviceLoading(false)
+    }
+  }
+
+  const handleRemoveDevice = async (deviceId) => {
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/users/devices/${deviceId}`, {
+        withCredentials: true
+      })
+      toast.success('Device removed successfully')
+      fetchDevices() // Refresh the devices list
+    } catch (error) {
+      toast.error('Failed to remove device')
+    }
+  }
+
+  const handleRemoveAllDevices = async () => {
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/users/devices`, {
+        withCredentials: true
+      })
+      toast.success('Logged out from all devices')
+      dispatch(clearUser())
+      fetchDevices() // Refresh the devices list
+    } catch (error) {
+      toast.error('Failed to remove all devices')
+    }
+  }
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -259,6 +341,58 @@ export default function Profile() {
             >
               Logout
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Login Devices</CardTitle>
+            <CardDescription>
+              Manage your active login sessions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {deviceLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : devices.length > 0 ? (
+              <>
+                <div className="space-y-4">
+                  {devices.map((device) => (
+                    <div
+                      key={device.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{device.device}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Last used: {new Date(device.lastUsed).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleRemoveDevice(device.id)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={handleRemoveAllDevices}
+                >
+                  Logout All Devices
+                </Button>
+              </>
+            ) : (
+              <p className="text-center text-muted-foreground">
+                No active login sessions found
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

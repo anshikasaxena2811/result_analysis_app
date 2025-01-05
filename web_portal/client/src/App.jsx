@@ -9,6 +9,8 @@ import Register from './appComponents/auth/Register'
 import Profile from './appComponents/Profile'
 import PrivateRoute from './components/PrivateRoute'
 import { Layout } from './components/Layout'
+import Team from './appComponents/Team';
+
 
 function App() {
   return (
@@ -19,6 +21,7 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/team" element={<Team />} />
             <Route element={<PrivateRoute />}>
               <Route path="/upload" element={<FileUpload />} />
               <Route path="/results" element={<AnalysisResults />} />
