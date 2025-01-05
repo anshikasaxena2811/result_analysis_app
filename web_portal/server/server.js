@@ -1,14 +1,38 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const cors = require('cors');
+import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+import userRoutes from './routes/userRoutes.js'
+import { connectDB } from './config/db.js'
+
+// ES Module fix for __dirname
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// Load environment variables
+dotenv.config()
+
+// Now you can use process.env.VARIABLE_NAME throughout your application
+
+import express from 'express';
+import multer from 'multer';
+import cors from 'cors';
+import fs from 'fs';
 
 const app = express();
 const port = 8000;
 
+connectDB()
+
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+
+// Routes
+app.use('/', userRoutes);
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -85,7 +109,6 @@ app.use((err, req, res, next) => {
 });
 
 // Create uploads directory if it doesn't exist
-const fs = require('fs');
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);

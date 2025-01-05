@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, createContext, useContext } from 'react'
 import { useSelector } from 'react-redux'
 
-export function ThemeProvider({ children }) {
+const ThemeProviderContext = createContext({})
+
+export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 'vite-ui-theme', ...props }) {
   const { mode } = useSelector((state) => state.theme)
 
   useEffect(() => {
@@ -10,5 +12,16 @@ export function ThemeProvider({ children }) {
     root.classList.add(mode)
   }, [mode])
 
-  return children
-} 
+  return (
+    <ThemeProviderContext.Provider {...props} value={{ mode }}>
+      {children}
+    </ThemeProviderContext.Provider>
+  )
+}
+
+export const useTheme = () => {
+  const context = useContext(ThemeProviderContext)
+  if (context === undefined)
+    throw new Error('useTheme must be used within a ThemeProvider')
+  return context
+}

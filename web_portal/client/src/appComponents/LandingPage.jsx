@@ -14,18 +14,7 @@ export default function Landing() {
       <nav className="border-b">
         <div className="container max-w-6xl py-4 px-4 flex justify-between items-center">
           <h2 className="text-xl font-bold">Result Analysis</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => dispatch(toggleTheme())}
-            aria-label="Toggle theme"
-          >
-            {mode === 'light' ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </Button>
+          
         </div>
       </nav>
 

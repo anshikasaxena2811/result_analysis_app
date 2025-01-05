@@ -18,7 +18,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import ExcelPreview from '@/components/ExcelPreview'
 
 export default function AnalysisResults() {
-  const location = useLocation()
   const navigate = useNavigate()
   const generatedFiles = useSelector((state) => state.files.generatedFiles)
   const dispatch = useDispatch()
