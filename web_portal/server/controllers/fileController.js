@@ -100,7 +100,6 @@ export const downloadFile = async (req, res) => {
       res.setHeader('Content-Type', fileStream.ContentType);
       res.setHeader('Content-Disposition', `attachment; filename=${key.split('/').pop()}`);
       
-      // Send the file
       res.send(Buffer.from(file));
     } catch (s3Error) {
       console.error('S3 error:', s3Error);
@@ -164,3 +163,131 @@ export const saveFile = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 }
+
+export const deleteFile = async (req, res) => {
+  try {
+    const { key } = req.params;
+    
+    // Delete from S3
+    const deleteParams = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: decodeURIComponent(key)
+    };
+    
+    // check if the file is deleted from s3
+    const s3Delete = await s3.deleteObject(deleteParams);
+    console.log("s3Delete => ", s3Delete)
+
+    // Construct the full S3 URL that's stored in the database
+    const s3Url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${decodeURIComponent(key)}`;
+
+    // Update the document by removing the specific file path from result_path array
+    const dbUpdate = await File.updateOne(
+      { result_path: s3Url },
+      { $pull: { result_path: s3Url } }
+    );
+
+    if (dbUpdate.modifiedCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'File path not found in database' 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'File deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to delete file' 
+    });
+  }
+}
+
+export const synchronizeDatabase = async (req, res) => {
+  try {
+    // Get all files from database
+    const files = await File.find({});
+    let syncResults = {
+      totalDocuments: files.length,
+      totalPathsChecked: 0,
+      pathsRemoved: 0,
+      errors: []
+    };
+
+    for (const file of files) {
+      // Create a copy of result_path to track valid paths
+      let validPaths = [...file.result_path];
+      
+      // Check each path in result_path
+      for (const path of file.result_path) {
+        syncResults.totalPathsChecked++;
+        
+        try {
+          // Extract the key from the S3 URL
+          const urlParts = path.split('.com/');
+          if (urlParts.length !== 2) {
+            validPaths = validPaths.filter(p => p !== path);
+            syncResults.pathsRemoved++;
+            continue;
+          }
+          
+          const key = decodeURIComponent(urlParts[1]);
+          
+          // Check if file exists in S3
+          const command = {
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: key
+          };
+
+          try {
+            await s3.headObject(command);
+          } catch (s3Error) {
+            // If file doesn't exist in S3, remove it from validPaths
+            if (s3Error.name === 'NotFound') {
+              validPaths = validPaths.filter(p => p !== path);
+              syncResults.pathsRemoved++;
+            }
+          }
+        } catch (error) {
+          syncResults.errors.push({
+            path: path,
+            error: error.message
+          });
+        }
+      }
+
+      // Update document if paths were removed
+      if (validPaths.length !== file.result_path.length) {
+        // If no valid paths remain, delete the document
+        if (validPaths.length === 0) {
+          await File.deleteOne({ _id: file._id });
+        } else {
+          // Update the document with only valid paths
+          await File.updateOne(
+            { _id: file._id },
+            { $set: { result_path: validPaths } }
+          );
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Database synchronized with S3 bucket',
+      results: syncResults
+    });
+  } catch (error) {
+    console.error('Synchronization error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to synchronize database',
+      error: error.message
+    });
+  }
+};
+
+

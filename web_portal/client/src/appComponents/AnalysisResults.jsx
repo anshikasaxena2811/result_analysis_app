@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
-import { Download, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { Download, ChevronDown, ChevronRight, Loader2, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { useDispatch, useSelector } from 'react-redux'
 import { setFiles, setLoading, setError } from '../store/filesSlice'
@@ -14,6 +14,7 @@ export default function AnalysisResults() {
   const [expandedSessions, setExpandedSessions] = useState({});
   const [expandedPrograms, setExpandedPrograms] = useState({});
   const [expandedSemesters, setExpandedSemesters] = useState({});
+  const { user } = useSelector((state) => state.user);
 
   const handleDownload = async (filePath, fileName) => {
     try {
@@ -28,6 +29,8 @@ export default function AnalysisResults() {
         }
       );
 
+      console.log("response => ", response)
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -40,7 +43,7 @@ export default function AnalysisResults() {
       toast.success('File downloaded successfully');
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download file');
+      toast.error(error);
     } finally {
       setDownloading(false);
     }
@@ -91,6 +94,28 @@ export default function AnalysisResults() {
     }));
   };
 
+  const handleDelete = async (filePath, fileName) => {
+    try {
+      const key = filePath.split('.com/')[1];
+      console.log("key => ", key)
+      const response = await axios.delete(
+        `http://localhost:8000/api/files/delete/${encodeURIComponent(key)}`,
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        toast.success('File deleted successfully');
+        // Refresh the file list
+        fetchFiles();
+      } else {
+        throw new Error('Failed to delete file');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete file');
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto p-4">
@@ -110,7 +135,7 @@ export default function AnalysisResults() {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
-              <CardTitle>Generated Files</CardTitle>
+              <CardTitle>All Reports</CardTitle>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -129,7 +154,7 @@ export default function AnalysisResults() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            { fileData ? (<div className="grid gap-4">
               <div className="border rounded-lg p-4">
                 {Object.entries(fileData).map(([session, programs]) => (
                   <div key={session} className="mb-4">
@@ -178,14 +203,26 @@ export default function AnalysisResults() {
                                     className="flex items-center justify-between gap-2 mb-1 hover:bg-gray-100 hover:text-blue-600 transition-colors p-1 rounded cursor-pointer text-sm"
                                   >
                                     <span>{file.file_name}</span>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDownload(file.file_path, file.file_name)}
-                                      disabled={downloading}
-                                    >
-                                      <Download className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDownload(file.file_path, file.file_name)}
+                                        disabled={downloading}
+                                      >
+                                        <Download className="h-4 w-4" />
+                                      </Button>
+                                      {user.role === 'admin' && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDelete(file.file_path, file.file_name)}
+                                          className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -197,7 +234,12 @@ export default function AnalysisResults() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div>): (
+              // show a message that no reports are available
+              <div className="flex items-center justify-center p-4">
+                <span className="text-sm text-gray-500">No reports are available</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

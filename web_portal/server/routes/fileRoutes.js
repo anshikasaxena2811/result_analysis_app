@@ -1,5 +1,5 @@
 import express from 'express';
-import { getFiles, downloadFile, uploadFile, checkFile, saveFile } from '../controllers/fileController.js';
+import { getFiles, downloadFile, uploadFile, checkFile, saveFile, deleteFile } from '../controllers/fileController.js';
 import upload from '../utils/multer.js';
 const fileRouter = express.Router();
 
@@ -16,5 +16,7 @@ fileRouter.post('/api/files/check-file', checkFile);
 
 // save the file details in the database
 fileRouter.post('/api/files/save-file', saveFile);
+
+fileRouter.delete('/api/files/delete/:key', deleteFile);
 
 export default fileRouter; 
