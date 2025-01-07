@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { setGeneratedFiles } from '../store/filesSlice'
+import { setGeneratedFiles, setFiles } from '../store/filesSlice'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card'
 
 export default function FileUpload() {
@@ -51,7 +51,6 @@ export default function FileUpload() {
       return
     }
 
-    // Validate report details
     if (!Object.values(reportDetails).every(value => value)) {
       toast.error('Please fill in all report details')
       return
@@ -62,29 +61,44 @@ export default function FileUpload() {
     formData.append('file', file)
 
     try {
-      // First upload the file
-      const uploadResponse = await axios.post('http://localhost:8000/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
+      const checkFileResponse = await axios.post('http://localhost:8000/api/files/check-file/', {
+        ...reportDetails
       })
 
-      if (uploadResponse.data.filePath) {
-        // Then analyze the file
-        const analysisResponse = await axios.post('http://localhost:5000/analyze', {
-          file_path: uploadResponse.data.filePath,
-          report_details: reportDetails
+      if (checkFileResponse.data.success) {
+        const uploadResponse = await axios.post('http://localhost:8000/api/files/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
         })
 
-        if (analysisResponse.data) {
-          toast.success('Analysis completed successfully')
-          dispatch(setGeneratedFiles(analysisResponse.data.generated_files || []))
-          navigate('/results', { 
-            state: { 
-              result: analysisResponse.data.result || [],
-              generated_files: analysisResponse.data.generated_files || []
-            }
+        if (uploadResponse.data.filePath) {
+          const analysisResponse = await axios.post('http://localhost:5000/analyze', {
+            file_path: uploadResponse.data.filePath,
+            report_details: reportDetails
           })
+
+          if (analysisResponse.data) {
+            toast.success('Analysis completed successfully')
+            
+            await axios.post('http://localhost:8000/api/files/save-file', {
+              ...reportDetails,
+              result_path: analysisResponse.data.generated_files || []
+            })
+
+            // Update both files and generatedFiles in the store
+            dispatch(setGeneratedFiles(analysisResponse.data.generated_files || []))
+            // Refresh the files list
+            const filesResponse = await axios.get('http://localhost:8000/api/files/get-files')
+            dispatch(setFiles(filesResponse.data.files))
+
+            navigate('/results', { 
+              state: { 
+                result: analysisResponse.data.result || [],
+                generated_files: analysisResponse.data.generated_files || []
+              }
+            })
+          }
         }
       }
     } catch (error) {

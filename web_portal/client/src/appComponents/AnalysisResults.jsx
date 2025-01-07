@@ -2,39 +2,39 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
-import { Download, ChevronDown, ChevronRight } from 'lucide-react'
+import { Download, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import axios from 'axios'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { useDispatch, useSelector } from 'react-redux'
+import { setFiles, setLoading, setError } from '../store/filesSlice'
 
 export default function AnalysisResults() {
-  const [result, setResult] = useState([])
-  const [generatedFiles, setGeneratedFiles] = useState([])
-  const [downloading, setDownloading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
+  const dispatch = useDispatch();
+  const { files: fileData, loading, generatedFiles } = useSelector((state) => state.files);
+  const [downloading, setDownloading] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState({});
   const [expandedPrograms, setExpandedPrograms] = useState({});
   const [expandedSemesters, setExpandedSemesters] = useState({});
 
-  const handleDownload = async (fileKey) => {
+  const handleDownload = async (filePath, fileName) => {
     try {
       setDownloading(true);
+      const key = filePath.split('.com/')[1];
+      
       const response = await axios.get(
-        `http://localhost:8000/api/files/download/${encodeURIComponent(fileKey)}`,
+        `http://localhost:8000/api/files/download/${encodeURIComponent(key)}`,
         {
           withCredentials: true,
           responseType: 'blob'
         }
       );
 
-      // Create a download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', fileKey.split('/').pop()); // Get the filename from the path
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
       
-      // Cleanup
       link.remove();
       window.URL.revokeObjectURL(url);
       toast.success('File downloaded successfully');
@@ -48,55 +48,26 @@ export default function AnalysisResults() {
 
   const fetchFiles = async () => {
     try {
+      dispatch(setLoading(true));
       const response = await axios.get(
         `http://localhost:8000/api/files/get-files`,
       );
-
-      console.log("response => ", response)
-      setGeneratedFiles(response.data.files.map(file => file.key));
+      dispatch(setFiles(response.data.files));
     } catch (error) {
       console.error('Error fetching files:', error);
+      dispatch(setError(error.message));
       toast.error('Failed to fetch files');
     }
   };
 
-  console.log("generatedFiles => ", generatedFiles)
+  useEffect(() => {
+    if (Object.keys(fileData).length === 0) {
+      fetchFiles();
+    }
+  }, []);
 
-useEffect(() => {
-  fetchFiles()
-}, [])
-
-  // 2021-2025/BACHELOR OF COMPUTER APPLICATIONS/Third Semester/top_five_students.xlsx
-  const organizeFiles = (files) => {
-    return files.reduce((acc, filePath) => {
-      // Split the path into components
-      const parts = filePath.split('/');
-      
-      // Extract components
-      const session = parts[0];  // e.g., "2021-2025"
-      const program = parts[1];  // e.g., "BACHELOR OF COMPUTER APPLICATIONS" 
-      const semesterFull = parts[2];  // e.g., "Third Semester"
-      const fileName = parts[3];  // e.g., "top_five_students.xlsx"
-      
-      // Extract semester number
-      const semester = semesterFull.split(' ')[0]; // e.g., "Third"
-
-      // Initialize nested structure if it doesn't exist
-      if (!acc[session]) acc[session] = {};
-      if (!acc[session][program]) acc[session][program] = {};
-      if (!acc[session][program][semester]) acc[session][program][semester] = [];
-
-      // Add file info to the structure
-      acc[session][program][semester].push({
-        session,
-        program,
-        semester: semesterFull,
-        file_name: fileName,
-        key: filePath
-      });
-
-      return acc;
-    }, {});
+  const handleRefresh = () => {
+    fetchFiles();
   };
 
   const toggleSession = (session) => {
@@ -120,17 +91,47 @@ useEffect(() => {
     }));
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto p-4">
+        <Card>
+          <CardContent className="flex items-center justify-center p-6">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            <span>Loading files...</span>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4">
       <div className="grid gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Generated Files</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Generated Files</CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Refreshing...
+                  </>
+                ) : (
+                  'Refresh'
+                )}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
               <div className="border rounded-lg p-4">
-                {Object.entries(organizeFiles(generatedFiles)).map(([session, programs]) => (
+                {Object.entries(fileData).map(([session, programs]) => (
                   <div key={session} className="mb-4">
                     <div 
                       className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 hover:text-blue-600 transition-colors p-2 rounded group"
@@ -156,7 +157,7 @@ useEffect(() => {
                           <h4 className="text-md font-medium">{program}</h4>
                         </div>
 
-                        {expandedPrograms[`${session}-${program}`] && Object.entries(semesters).map(([semester, files]) => (
+                        {expandedPrograms[`${session}-${program}`] && Object.entries(semesters).map(([semester, semesterData]) => (
                           <div key={semester} className="ml-4 mb-2">
                             <div 
                               className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 hover:text-blue-600 transition-colors p-2 rounded group"
@@ -166,21 +167,25 @@ useEffect(() => {
                                 <ChevronDown className="h-4 w-4 group-hover:text-blue-600" /> : 
                                 <ChevronRight className="h-4 w-4 group-hover:text-blue-600" />
                               }
-                              <h5 className="text-sm font-medium">Semester {semester}</h5>
+                              <h5 className="text-sm font-medium">{semester}</h5>
                             </div>
 
                             {expandedSemesters[`${session}-${program}-${semester}`] && (
                               <div className="ml-8">
-                                {files.map((file, index) => (
+                                {semesterData[0].file.map((file, index) => (
                                   <div 
                                     key={index}
-                                    className="flex items-center gap-2 mb-1 hover:bg-gray-100 hover:text-blue-600 transition-colors p-1 rounded cursor-pointer text-sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedFile(file);
-                                    }}
+                                    className="flex items-center justify-between gap-2 mb-1 hover:bg-gray-100 hover:text-blue-600 transition-colors p-1 rounded cursor-pointer text-sm"
                                   >
-                                    {file.file_name}
+                                    <span>{file.file_name}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDownload(file.file_path, file.file_name)}
+                                      disabled={downloading}
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
                                   </div>
                                 ))}
                               </div>
@@ -192,30 +197,39 @@ useEffect(() => {
                   </div>
                 ))}
               </div>
-
-              {selectedFile && (
-                <div className="flex flex-col gap-2 p-4 border rounded">
-                  <div><strong>Session:</strong> {selectedFile.session}</div>
-                  <div><strong>Program:</strong> {selectedFile.program}</div>
-                  <div><strong>Semester:</strong> {selectedFile.semester}</div>
-                  <div><strong>File:</strong> {selectedFile.file_name}</div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDownload(selectedFile.key)}
-                    disabled={downloading}
-                    className="mt-2"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    {downloading ? 'Downloading...' : 'Download'}
-                  </Button>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
-       
+
+        {/* Show newly generated files if any */}
+        {generatedFiles.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recently Generated Files</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {generatedFiles.map((file, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-2 hover:bg-secondary/50 rounded-lg"
+                  >
+                    <span className="text-sm">{file.split('/').pop()}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDownload(file, file.split('/').pop())}
+                      disabled={downloading}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
-  )
+  );
 } 

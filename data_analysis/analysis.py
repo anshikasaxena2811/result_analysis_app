@@ -87,6 +87,13 @@ def analyze_marks(file_path, report_details):
             all_marks = []
             all_reports = {}
             
+            # Define identifier mapping at the start of analyze_marks function
+            identifier_name = {
+                'T': 'Total',
+                'E': 'External',
+                'I': 'Internal'
+            }
+            
             for identifier in identifiers:
                 # Load and process data for each identifier
                 df = pd.read_excel(file_path)
@@ -131,7 +138,13 @@ def analyze_marks(file_path, report_details):
                     df1 = df1.loc[:, ~df1.columns.str.contains("-")]
                 
                 # Save complete dataframe before dropping NA rows
-                marks_file = os.path.join(total_marks_dir, f"{identifier}_total_marks.xlsx")
+                try:
+                    marks_file = os.path.join(total_marks_dir, 
+                        f"{identifier_name[identifier]}_marks.xlsx")
+                except Exception as e:
+                    print(f"Error creating marks file name: {str(e)}")
+                    marks_file = os.path.join(total_marks_dir, 
+                        f"marks_{identifier}.xlsx")  # Fallback naming
                 df1.to_excel(marks_file, index=False)
                 generated_files.append(marks_file)
                 print(f"Total marks for {identifier} saved to {marks_file}")
@@ -158,7 +171,13 @@ def analyze_marks(file_path, report_details):
                     
                     # Create PDF and Excel files with identifier prefix
                    # pdf_file = os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.pdf")
-                    excel_file = os.path.abspath(os.path.join(distribution_dir, f"{identifier}_marks_distribution_report.xlsx"))
+                    try:
+                        excel_file = os.path.abspath(os.path.join(distribution_dir, 
+                            f"{identifier_name[identifier]}_marks_distribution_report.xlsx"))
+                    except Exception as e:
+                        print(f"Error creating distribution file name: {str(e)}")
+                        excel_file = os.path.abspath(os.path.join(distribution_dir, 
+                            f"marks_distribution_report_{identifier}.xlsx"))  # Fallback naming
                     
                     # Create ranges based on identifier
                     if identifier == 'E':
@@ -549,7 +568,25 @@ def analyze_marks(file_path, report_details):
             print(f"Average marks Excel report saved to: {consolidated_excel}")
             generated_files.append(consolidated_excel)
 
-            report_file = os.path.join(report_dir, f"analysis_report_{identifier}.xlsx")
+            try:
+                # Validate identifier before using it
+                if identifier not in identifier_name:
+                    raise ValueError(f"Invalid identifier: {identifier}. Must be one of: {', '.join(identifier_name.keys())}")
+                
+                # Update analysis report naming with error handling
+                try:
+                    report_file = os.path.join(report_dir, 
+                        f"{identifier_name[identifier]}_analysis_report.xlsx")
+                except Exception as e:
+                    print(f"Error creating report file name: {str(e)}")
+                    report_file = os.path.join(report_dir, 
+                        f"analysis_report_{identifier}.xlsx")  # Fallback naming
+
+            except Exception as e:
+                print(f"Error in file naming: {str(e)}")
+                # Use original naming as fallback
+                report_file = os.path.join(report_dir, f"analysis_report_{identifier}.xlsx")
+
             
             with pd.ExcelWriter(report_file, engine='xlsxwriter') as writer:
                 # Only process 'T' identifier

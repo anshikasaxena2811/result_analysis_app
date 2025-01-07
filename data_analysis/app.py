@@ -27,6 +27,19 @@ def analyze():
         file_path = data.get('file_path')
         report_details = data.get('report_details')
         
+        # Extract file details from report_details
+        file_details = {
+            'collegeName': report_details.get('collegeName'),
+            'program': report_details.get('program'),
+            'batch': report_details.get('batch'),
+            'semester': report_details.get('semester'),
+            'session': report_details.get('session')
+        }
+        
+        # Validate required fields
+        if not all(file_details.values()):
+            return jsonify({'error': 'Missing required file details'}), 400
+
         if not file_path:
             return jsonify({'error': 'No file path provided'}), 400
         
@@ -41,7 +54,7 @@ def analyze():
         
         return jsonify({
             'result': analysis_result.to_dict(orient='records'),
-            'generated_files': s3_urls,  # Now sending S3 URLs instead of local paths
+            'generated_files': s3_urls,
             'message': 'Analysis completed successfully'
         }), 200
 
@@ -52,10 +65,6 @@ def analyze():
             'details': str(e)
         }), 500
 
-# Add an OPTIONS route to handle preflight requests explicitly
-@app.route('/analyze', methods=['OPTIONS'])
-def handle_options():
-    return '', 204
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)  # Explicitly set port to 5000 

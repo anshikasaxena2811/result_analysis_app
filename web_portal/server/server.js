@@ -2,11 +2,9 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import { S3 } from '@aws-sdk/client-s3'
 import userRoutes from './routes/userRoutes.js'
 import fileRoutes from './routes/fileRoutes.js'
 import express from 'express'
-import multer from 'multer'
 import cors from 'cors'
 import fs from 'fs'
 import cookieParser from 'cookie-parser'
@@ -51,91 +49,6 @@ app.options('*', cors())
 // Routes
 app.use('/', userRoutes)
 app.use('/', fileRoutes)
-
-// Configure S3
-const s3 = new S3({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY,
-    secretAccessKey: process.env.AWS_SECRET_KEY
-  }
-})
-
-// Configure multer for file upload
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/') // Files will be stored in uploads directory
-  },
-  filename: function (req, file, cb) {
-    // Keep the original filename
-    cb(null, file.originalname)
-  }
-})
-
-const upload = multer({
-  storage: storage,
-  fileFilter: (req, file, cb) => {
-    // Accept these MIME types for Excel files
-    const validMimeTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'application/vnd.ms-excel', // .xls
-      'application/excel',
-      'application/x-excel',
-      'application/x-msexcel'
-    ]
-
-    const filetypes = /xlsx|xls/
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase())
-    const mimetype = validMimeTypes.includes(file.mimetype)
-
-    if (extname && mimetype) {
-      return cb(null, true)
-    } else if (!extname) {
-      cb('Error: File must have .xlsx or .xls extension')
-    } else {
-      cb(`Error: Invalid file type. Received mimetype: ${file.mimetype}`)
-    }
-  }
-})
-
-// Route to handle file upload
-app.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' })
-  }
-
-  const filePath = path.resolve(req.file.path) // Get absolute path
-  
-  res.json({ 
-    message: 'File uploaded successfully',
-    filePath: filePath
-  })
-})
-
-// Add new route for file download
-app.get('/api/files/download/:key', async (req, res) => {
-  try {
-    const key = req.params.key;
-    
-    const command = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: key
-    };
-
-    const fileStream = await s3.getObject(command);
-    const file = await fileStream.Body.transformToByteArray();
-
-    // Set appropriate headers
-    res.setHeader('Content-Type', fileStream.ContentType);
-    res.setHeader('Content-Disposition', `attachment; filename=${key.split('/').pop()}`);
-    
-    // Send the file
-    res.send(Buffer.from(file));
-  } catch (error) {
-    console.error('Download error:', error);
-    res.status(500).json({ error: 'Failed to download file' });
-  }
-});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

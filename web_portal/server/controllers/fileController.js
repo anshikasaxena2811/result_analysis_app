@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { S3 } from '@aws-sdk/client-s3';
-
+import path from 'path';
+import File from '../models/File.js';
 dotenv.config();
 
 // Initialize S3 client
@@ -14,47 +15,67 @@ const s3 = new S3({
 
 export const getFiles = async (req, res) => {
   try {
-    const params = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      MaxKeys: 1000,
-    };
+    // Query MongoDB
+    const files = await File.find({})
+      .select('collegeName program batch semester session result_path')
+      .lean();
 
-    const data = await s3.listObjectsV2(params);
-    
-    if (!data.Contents || data.Contents.length === 0) {
+    if (!files || files.length === 0) {
       return res.status(200).json({
         success: true,
         files: []
       });
     }
+    
+    console.log("files => ", files[0].batch)
+    // Format the response, handling multiple batches, programs and semesters
+    // {
+    //   "2021-2025": {
+    //     "BACHELOR OF COMPUTER APPLICATIONS": {
+    //       "Third": [
+    //         {
+    //           "file_name": "top_five_students.xlsx",
+    //           "key": "s3://bucket-name/path/to/file.xlsx"
+    //         }
+    //       ]
+    //     }
+    //   }
+    // }
 
-    // Parse and format the files data
-    const files = data.Contents.map(file => {
-      // Split the key by '/'
-      const [sessionFolder, programName, semester, fileName] = file.Key.split('/');
+    const formattedFiles = files.reduce((acc, file) => {
+      console.log(file);
       
-      // Format session (e.g., "2021-22" to "2021-2022")
-      const [startYear, endYear] = sessionFolder.split('-');
-      const formattedSession = `${startYear}-20${endYear}`;
+      if (!acc[file.batch]) acc[file.batch] = {};
+      if (!acc[file.batch][file.program]) acc[file.batch][file.program] = {};
+      if (!acc[file.batch][file.program][file.semester]) acc[file.batch][file.program][file.semester] = [];
 
-      return {
-        session: formattedSession,
-        program: programName,
-        semester: semester,
-        file_name: fileName,
-        lastModified: file.LastModified,
-        size: file.Size,
-        key: file.Key // keeping the original key for reference if needed
-      };
-    }).filter(file => file.file_name); // Only include files that have a filename (filters out folders)
+      // fetch the file name from the path 
+
+      let file_details = []
+
+      for (const path of file.result_path) {
+        file_details.push({
+          file_name: path.split('/').pop(),
+          file_path: path
+        })
+      }
+
+
+      acc[file.batch][file.program][file.semester].push({
+        file: file_details
+      });
+
+      return acc;
+    }, {});
+
+    console.log("formattedFiles => ", formattedFiles)
 
     res.status(200).json({
       success: true,
-      files,
-      isTruncated: data.IsTruncated
+      files: formattedFiles
     });
   } catch (error) {
-    console.error('S3 Error:', error); // Temporary debug log
+    console.error('Database Error:', error);
     res.status(500).json({
       success: false, 
       error: error.message
@@ -64,18 +85,82 @@ export const getFiles = async (req, res) => {
 
 export const downloadFile = async (req, res) => {
   try {
-    const { key } = req.params;
+    const key = decodeURIComponent(req.params.key);
     
-    const params = {
+    const command = {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: key
     };
 
-    const fileStream = s3.getObject(params).createReadStream();
-    res.attachment(key);
-    fileStream.pipe(res);
+    try {
+      const fileStream = await s3.getObject(command);
+      const file = await fileStream.Body.transformToByteArray();
+
+      // Set appropriate headers
+      res.setHeader('Content-Type', fileStream.ContentType);
+      res.setHeader('Content-Disposition', `attachment; filename=${key.split('/').pop()}`);
+      
+      // Send the file
+      res.send(Buffer.from(file));
+    } catch (s3Error) {
+      console.error('S3 error:', s3Error);
+      res.status(404).json({ error: 'File not found in S3' });
+    }
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.error('Download error:', error);
+    res.status(500).json({ error: 'Failed to download file' });
   }
 };
 
+export const uploadFile = (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' })
+  }
+
+  const filePath = path.resolve(req.file.path) // Get absolute path
+  
+  res.json({ 
+    message: 'File uploaded successfully',
+    filePath: filePath
+  })
+}
+
+// check if the file is already uploaded and anaylzed
+
+export const checkFile = async(req, res) => {
+  console.log("Checking file...")
+  console.log(req.body)
+  const { collegeName, program, batch, semester, session } = req.body;
+  
+  try {
+    const file = await File.findOne({ collegeName, program, batch, semester, session });
+    
+    if (file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'File already uploaded and analyzed' 
+      });
+    }
+    return res.status(200).json({ 
+      success: true, 
+      message: 'File can be uploaded' 
+    });
+  } catch (error) {
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Error checking file status',
+      error: error.message 
+    });
+  }
+}
+
+export const saveFile = async (req, res) => {
+  const { collegeName, program, batch, semester, session, result_path } = req.body;
+  
+  try {
+    const file = await File.create({ collegeName, program, batch, semester, session, result_path });
+    res.status(200).json({ success: true, file });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
