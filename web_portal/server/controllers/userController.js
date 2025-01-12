@@ -80,7 +80,6 @@ export const login = async (req, res, next) => {
 
     // Create token - Let's add console.logs to check the payload
     const tokenPayload = { id: user._id, role: user.role };
-    console.log('Token payload:', tokenPayload);
     
     const token = jwt.sign(
       tokenPayload,
@@ -90,11 +89,7 @@ export const login = async (req, res, next) => {
 
     // Verify token contents
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Decoded token:', decodedToken);
-
-    console.log("token punched successfully")
-    console.log("user => ", user)
-    console.log("token id => ", token.id)
+    
     // Add token to user's tokens array with device info
     const device = req.headers['user-agent'] || 'unknown device';
     await user.addToken(token, device);
@@ -124,7 +119,6 @@ export const login = async (req, res, next) => {
 
 // Get current user profile
 export const getProfile = async (req, res, next) => {
-  console.log("req.user => ", req.user)
   try {
     const user = await User.findById(req.user.id).select('-password');
     res.status(200).json({
@@ -216,7 +210,7 @@ export const logout = async (req, res, next) => {
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Decoded logout token:', decoded);
+     
         const user  = await User.findByIdAndUpdate(decoded.id);
         await user.removeToken(token);
       } catch (err) {

@@ -1,9 +1,10 @@
 import multer from 'multer';
 import path from 'path';
 
+const uploadPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-      cb(null, 'uploads/') // Files will be stored in uploads directory
+      cb(null, uploadPath) // Files will be stored in uploads directory
     },
     filename: function (req, file, cb) {
       // Keep the original filename

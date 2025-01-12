@@ -1,0 +1,39 @@
+services:
+  server:
+    build:
+      context: ./web_portal/server
+      dockerfile: Dockerfile
+    image: kushagrakatiha/result_app_server_v1
+    volumes:
+      - uploads:/shared/uploads
+    ports:
+      - "8000:8000"
+    environment:
+      - UPLOADS_PATH=/shared/uploads
+    depends_on:
+      - analysis
+
+  client:
+    build:
+      context: ./web_portal/client
+      dockerfile: Dockerfile
+    image: kushagrakatiha/result_app_client_v1
+    ports:
+      - "5173:5173"
+    depends_on:
+      - server
+
+  analysis:
+    build:
+      context: ./data_analysis
+      dockerfile: Dockerfile
+    image: kushagrakatiha/result_app_analysis_v1
+    volumes:
+      - uploads:/shared/uploads
+    ports:
+      - "5000:5000"
+    environment:
+      - UPLOADS_PATH=/shared/uploads
+
+volumes:
+  uploads:

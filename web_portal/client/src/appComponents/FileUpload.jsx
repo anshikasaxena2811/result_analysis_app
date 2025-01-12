@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Button } from "@/components/ui/button"
-import { FileSpreadsheet, Upload, X, Loader2, Moon, Sun } from "lucide-react"
+import { FileSpreadsheet, Upload, X, Loader2, Moon, Sun, CornerDownLeft } from "lucide-react"
 import { toast } from 'sonner'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
@@ -59,12 +59,15 @@ export default function FileUpload() {
     setIsProcessing(true)
     const formData = new FormData()
     formData.append('file', file)
-
+    
     try {
       const checkFileResponse = await axios.post('http://localhost:8000/api/files/check-file/', {
         ...reportDetails
       })
+      console.log("step 1 cleared")
 
+      console.log(checkFileResponse);
+      
       if (checkFileResponse.data.success) {
         const uploadResponse = await axios.post('http://localhost:8000/api/files/upload', formData, {
           headers: {
@@ -72,6 +75,10 @@ export default function FileUpload() {
           }
         })
 
+        console.log("step 2 cleared");
+        
+        console.log("uploadResponse => ", uploadResponse);
+        
         if (uploadResponse.data.filePath) {
           const analysisResponse = await axios.post('http://localhost:5000/analyze', {
             file_path: uploadResponse.data.filePath,
@@ -85,6 +92,8 @@ export default function FileUpload() {
               ...reportDetails,
               result_path: analysisResponse.data.generated_files || []
             })
+
+            
 
             // Update both files and generatedFiles in the store
             dispatch(setGeneratedFiles(analysisResponse.data.generated_files || []))
@@ -103,7 +112,7 @@ export default function FileUpload() {
       }
     } catch (error) {
       console.error('Process failed:', error)
-      toast.error(error.response?.data?.error || 'Failed to process file')
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to process file')
     } finally {
       setIsProcessing(false)
     }
