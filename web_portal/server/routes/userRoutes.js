@@ -32,7 +32,7 @@ userRouter.delete('/api/users/devices/:deviceId', protect, removeDevice)
 userRouter.delete('/api/users/devices', protect, removeAllDevices)
 
 // Admin only routes
-userRouter.get('/api/users', protect, authorize('admin'), getAllUsers)
+userRouter.get('/api/users', getAllUsers)
 userRouter.delete('/api/users/:id', protect, authorize('admin'), deleteUser)
 
 export default userRouter 

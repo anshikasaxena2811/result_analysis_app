@@ -7,7 +7,6 @@ const fileSchema = new Schema({
     program: { type: String, required: true },
     batch: { type: String, required: true },
     semester: { type: String, required: true },
-    session: { type: String, required: true },
     result_path: { type: Array, required: true },
 }, {
     timestamps: true

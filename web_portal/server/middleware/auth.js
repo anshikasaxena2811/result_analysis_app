@@ -6,7 +6,7 @@ import User from '../models/User.js';
 export const protect = async (req, res, next) => {
   try {
     // Get token from cookie
-    const token = req?.cookies?.token
+    const token = req?.cookies?.token   
 
     // Check if token exists
     if (!token) {
@@ -14,7 +14,7 @@ export const protect = async (req, res, next) => {
     }
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+      
       // Get user
       const user = await User.findById(decoded.id).select('-password');
 

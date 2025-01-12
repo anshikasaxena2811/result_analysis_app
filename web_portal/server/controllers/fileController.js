@@ -27,7 +27,6 @@ export const getFiles = async (req, res) => {
       });
     }
 
-    console.log("files => ", files[0].batch);
     // Format the response, handling multiple batches, programs and semesters
     // {
     //   "2021-2025": {
@@ -43,7 +42,6 @@ export const getFiles = async (req, res) => {
     // }
 
     const formattedFiles = files.reduce((acc, file) => {
-      console.log(file);
 
       if (!acc[file.batch]) acc[file.batch] = {};
       if (!acc[file.batch][file.program]) acc[file.batch][file.program] = {};
@@ -67,8 +65,6 @@ export const getFiles = async (req, res) => {
 
       return acc;
     }, {});
-
-    console.log("formattedFiles => ", formattedFiles);
 
     res.status(200).json({
       success: true,
@@ -121,9 +117,7 @@ export const uploadFile = (req, res) => {
 
   const fileName = req.file.originalname;
 
-  const filePath = path.resolve(req.file.path)
-  console.log("filePath => ", filePath);
-   
+  const filePath = path.resolve(req.file.path)  
   
   res.json({
     message: "File uploaded successfully",
@@ -136,7 +130,6 @@ export const uploadFile = (req, res) => {
 
 export const checkFile = async (req, res) => {
   console.log("Checking file...");
-  console.log(req.body);
   const { collegeName, program, batch, semester, session } = req.body;
 
   try {
@@ -198,7 +191,6 @@ export const deleteFile = async (req, res) => {
 
     // check if the file is deleted from s3
     const s3Delete = await s3.deleteObject(deleteParams);
-    console.log("s3Delete => ", s3Delete);
 
     // Construct the full S3 URL that's stored in the database
     const s3Url = `https://${process.env.AWS_BUCKET_NAME}.s3.${

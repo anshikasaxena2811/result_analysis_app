@@ -1,7 +1,14 @@
 import multer from 'multer';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const uploadPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
+console.log('Upload path:', uploadPath);
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, uploadPath) // Files will be stored in uploads directory

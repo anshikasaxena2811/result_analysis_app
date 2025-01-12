@@ -24,6 +24,14 @@ const userSchema = new Schema({
     enum: ['admin', 'faculty', 'student'],
     required: true
   },
+  addmissionYear: {
+    type: Number,
+    default: null
+  },
+  program: {
+    type: String,
+    default: null
+  },
   tokens: [{
     token: {
       type: String,

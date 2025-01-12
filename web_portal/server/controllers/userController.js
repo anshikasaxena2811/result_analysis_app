@@ -6,7 +6,18 @@ import { createError } from '../utils/error.js';
 // Register a new user
 export const register = async (req, res, next) => {
   try {
-    const { name, email, password, role, department } = req.body;
+    const { name, email, password, role, admissionYear, program } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password || !role) {
+      return next(createError(400, 'Please provide all required fields'));
+    }
+
+    // validate required fields for student
+    if (role === 'student' && (!admissionYear || !program)) {
+      return next(createError(400, 'Please provide all required fields'));
+    }
+
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -24,7 +35,8 @@ export const register = async (req, res, next) => {
       email,
       password: hashedPassword,
       role,
-      department
+      admissionYear,
+      program
     });
 
     // Save user
@@ -273,10 +285,9 @@ export const deleteUser = async (req, res, next) => {
   }
 };
 
-// Get all users (admin only)
 export const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select('-password');
+    const users = await User.find({}).select('-password');
     res.status(200).json({
       success: true,
       count: users.length,
