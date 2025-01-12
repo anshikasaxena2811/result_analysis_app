@@ -9,7 +9,7 @@ import { setFiles, setLoading, setError } from '../store/filesSlice'
 
 export default function AnalysisResults() {
   const dispatch = useDispatch();
-  const { files: fileData, loading, generatedFiles } = useSelector((state) => state.files);
+  const { files: fileData, loading } = useSelector((state) => state.files);
   const [downloading, setDownloading] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState({});
   const [expandedPrograms, setExpandedPrograms] = useState({});
@@ -202,7 +202,7 @@ export default function AnalysisResults() {
                                     key={index}
                                     className="flex items-center justify-between gap-2 mb-1 hover:bg-gray-100 hover:text-blue-600 transition-colors p-1 rounded cursor-pointer text-sm"
                                   >
-                                    <span>{file.file_name}</span>
+                                    <span>{file.file_name.toUpperCase().split('_').join(' ')}</span>
                                     <div className="flex gap-2">
                                       <Button
                                         variant="ghost"
@@ -242,35 +242,6 @@ export default function AnalysisResults() {
             )}
           </CardContent>
         </Card>
-
-        {/* Show newly generated files if any */}
-        {generatedFiles.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Recently Generated Files</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {generatedFiles.map((file, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center justify-between p-2 hover:bg-secondary/50 rounded-lg"
-                  >
-                    <span className="text-sm">{file.split('/').pop()}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDownload(file, file.split('/').pop())}
-                      disabled={downloading}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

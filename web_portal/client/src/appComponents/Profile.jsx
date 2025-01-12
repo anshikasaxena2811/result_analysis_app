@@ -34,6 +34,7 @@ export default function Profile() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    admissionYear: '',
     program: '',
   })
 
@@ -78,6 +79,7 @@ export default function Profile() {
         ...prev,
         name: user.name || '',
         email: user.email || '',
+        admissionYear: user.admissionYear || '',
         program: user.program || ''
       }))
     }
@@ -250,6 +252,16 @@ export default function Profile() {
                   type="email"
                   placeholder="Enter your email"
                   value={formData.email}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admissionYear">Admission Year</Label>
+                <Input
+                  id="admissionYear"
+                  name="admissionYear"
+                  placeholder="Enter your admission year"
+                  value={formData.admissionYear}
                   onChange={handleChange}
                 />
               </div>

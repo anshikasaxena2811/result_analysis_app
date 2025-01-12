@@ -146,7 +146,7 @@ def analyze_marks(file_path, report_details):
                     marks_file = os.path.join(total_marks_dir, 
                         f"marks_{identifier}.xlsx")  # Fallback naming
                 df1.to_excel(marks_file, index=False)
-                generated_files.append(marks_file)
+                # generated_files.append(marks_file)
                 print(f"Total marks for {identifier} saved to {marks_file}")
 
                 df1.dropna(axis=0, how='any', inplace=True)
@@ -531,9 +531,6 @@ def analyze_marks(file_path, report_details):
             for df in all_marks[1:]:
                 final_df = pd.merge(final_df, df, on='Course_Code', how='outer')
 
-            
-            # Add faculty name column to final_df
-            final_df['Faculty_Name'] = ''  # Add empty column for faculty names
 
             # Create a single Excel workbook for all data
             consolidated_excel = os.path.abspath(os.path.join(averages_dir, "average_marks.xlsx"))
@@ -635,8 +632,6 @@ def analyze_marks(file_path, report_details):
                     f"PROGRAM: {report_details['program']}",
                     f"BATCH: {report_details['batch']}",
                     f"SEMESTER: {report_details['semester']}",
-                    f"SESSION: {report_details['session']}",
-                    f"DATE: {report_details['date']}"
                 ]
                 
                 for detail in details_to_write:

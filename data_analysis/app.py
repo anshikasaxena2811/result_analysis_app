@@ -19,19 +19,13 @@ CORS(app, resources={
 def analyze():
     try:
         data = request.get_json()
-        print("data=>", data)
-        file_path = request.json.get('file_path')
-        print("file_path=>", file_path)
-        shared_uploads_path = os.getenv('UPLOADS_PATH', '/shared/uploads')
-        print("shared_uploads_path=>", shared_uploads_path)
-       
+        print("\n=== Received Data from Frontend ===")
+        print("File Path:", data.get('file_path'))
+        print("Report Details:", data.get('report_details'))
+        print("================================\n")
 
-        # Validate that the file exists in the shared directory
-        
-        full_path = os.path.join(shared_uploads_path, os.path.basename(file_path))
-        print("reached here")
-        if not os.path.exists(full_path):
-            return jsonify({'error': f'File not found at: {full_path}'}), 404
+        file_path = data.get('file_path')
+        print("File Path:", file_path)
         report_details = data.get('report_details')
         
         # Extract file details from report_details
@@ -40,7 +34,6 @@ def analyze():
             'program': report_details.get('program'),
             'batch': report_details.get('batch'),
             'semester': report_details.get('semester'),
-            'session': report_details.get('session')
         }
         
         # Validate required fields
@@ -74,4 +67,4 @@ def analyze():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=5000)  # Explicitly set port to 5000 
+    app.run(debug=True,host="0.0.0.0", port=5000)  # Explicitly set port to 5000 

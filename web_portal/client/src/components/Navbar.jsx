@@ -11,6 +11,7 @@ import {
   User,
   Users,
   X,
+  Settings,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '../lib/utils'
@@ -57,6 +58,14 @@ export function Navbar() {
     },
   ]
 
+  // Admin-specific nav item
+  const adminNavItem = {
+    name: 'Admin Panel',
+    path: '/admin-panel',
+    icon: <Settings className="h-5 w-5" />,
+    roles: ['admin']
+  }
+
   // Public nav items (visible to all visitors)
   const publicNavItems = [
     {
@@ -66,14 +75,14 @@ export function Navbar() {
     }
   ]
 
-  // Filter protected items based on user role
+  // Add the admin panel for admin users
   const filteredProtectedItems = user 
     ? protectedNavItems.filter(item => item.roles.includes(user.role))
     : [];
 
-  // Combine protected and public items
-  const allNavItems = user 
-    ? [...filteredProtectedItems, ...publicNavItems]
+  // Combine adminNavItem for admin users
+  const allNavItems = user
+    ? [...filteredProtectedItems, ...(user.role === 'admin' ? [adminNavItem] : []), ...publicNavItems]
     : publicNavItems;
 
   return (
@@ -184,4 +193,4 @@ export function Navbar() {
       )}
     </nav>
   )
-} 
+}

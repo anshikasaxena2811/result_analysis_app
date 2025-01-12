@@ -10,6 +10,7 @@ import Profile from './appComponents/Profile'
 import PrivateRoute from './components/PrivateRoute'
 import { Layout } from './components/Layout'
 import Team from './appComponents/Team';
+import AdminPanel from './appComponents/AdminPannel'
 
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
               <Route path="/upload" element={<FileUpload />} />
               <Route path="/results" element={<AnalysisResults />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/admin-panel" element={<AdminPanel/>}/>
             </Route>
           </Routes>
         </Layout>

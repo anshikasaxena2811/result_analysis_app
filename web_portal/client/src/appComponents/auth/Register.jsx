@@ -6,16 +6,21 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { programs } from '../constants'
 import axios from 'axios'
 export default function Register() {
+
   const navigate = useNavigate()
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     role: '',
+    admissionYear: '',
     program: ''
   })
+
   const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
@@ -29,6 +34,13 @@ export default function Register() {
     setFormData({
       ...formData,
       role: value
+    })
+  }
+
+  const handleprogramChange = (value) => {
+    setFormData({
+      ...formData,
+      program: value
     })
   }
 
@@ -70,6 +82,7 @@ export default function Register() {
                 onChange={handleChange}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -82,6 +95,7 @@ export default function Register() {
                 onChange={handleChange}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -94,9 +108,10 @@ export default function Register() {
                 onChange={handleChange}
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
-              <Select 
+              <Select
                 onValueChange={handleRoleChange}
                 required
               >
@@ -109,23 +124,48 @@ export default function Register() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="program">Program</Label>
-              <Input
-                id="program"
-                name="program"
-                placeholder="Enter your program"
-                required
-                value={formData.program}
-                onChange={handleChange}
-              />
-            </div>
+
+            {/* role based details */}
+
+            {
+              formData.role == 'student' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="admissionYear">Admission Year</Label>
+                    <Input
+                      id="admissionYear"
+                      name="admissionYear"
+                      placeholder="Enter your admission year"
+                      required
+                      value={formData.admissionYear}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="program">Program</Label>
+                    <Select onValueChange={handleprogramChange} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your program" />
+                      </SelectTrigger>
+                      <SelectContent className="overflow-y-auto max-h-52 md:max-h-80 lg:max-h-80">
+                        {programs.map((program) => (
+                          <SelectItem key={program.value} value={program.value}>
+                            {program.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )
+            }
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full"
-              disabled={loading}    
+              disabled={loading}
             >
               {loading ? 'Creating account...' : 'Create account'}
             </Button>
