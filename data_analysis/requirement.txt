@@ -6,3 +6,4 @@ matplotlib
 xlsxwriter
 Flask
 xlrd>=2.0.1
+flask_cors
