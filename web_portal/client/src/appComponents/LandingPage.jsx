@@ -1,34 +1,13 @@
-import { Button } from "@/components/ui/button"
-import { ArrowRight, BarChart2, FileSpreadsheet, Trophy, Users, Moon, Sun } from "lucide-react"
-import { useDispatch, useSelector } from 'react-redux'
-import { toggleTheme } from '../store/themeSlice'
 import { Link } from 'react-router-dom'
+import { Button } from '../components/ui/button'
+import { ArrowRight, BarChart2, FileSpreadsheet, Trophy, Users } from "lucide-react"
+import { useSelector } from 'react-redux'
 
 export default function Landing() {
-  const dispatch = useDispatch()
-  const { mode } = useSelector((state) => state.theme)
+  const { user } = useSelector((state) => state.user)
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Navbar with Theme Toggle */}
-      <nav className="border-b">
-        <div className="container max-w-6xl py-4 px-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold">Result Analysis</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => dispatch(toggleTheme())}
-            aria-label="Toggle theme"
-          >
-            {mode === 'light' ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="flex-1 flex flex-col items-center justify-center px-4 py-20 bg-gradient-to-b from-background to-secondary/20">
         <div className="container max-w-6xl">
@@ -42,14 +21,16 @@ export default function Landing() {
             </p>
             <div className="flex gap-4 justify-center pt-4">
               <Button size="lg" asChild>
-                <Link to="/upload">
-                  Get Started
+                <Link to={user ? "/upload" : "/login"}>
+                  {user ? "Upload Results" : "Get Started"}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline">
-                Learn More
-              </Button>
+              {!user && (
+                <Button size="lg" variant="outline" asChild>
+                  <Link to="/register">Register Now</Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -87,7 +68,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="py-6 px-4 border-t">
         <div className="container max-w-6xl text-center text-sm text-muted-foreground">
-          © 2024 Result Analysis System. All rights reserved.
+          © {new Date().getFullYear()} Result Analysis System. All rights reserved.
         </div>
       </footer>
     </div>

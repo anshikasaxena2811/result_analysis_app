@@ -11,4 +11,4 @@ export function ThemeProvider({ children }) {
   }, [mode])
 
   return children
-} 
+}

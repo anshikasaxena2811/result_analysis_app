@@ -6,202 +6,295 @@ import { toast } from 'sonner'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { setGeneratedFiles } from '../store/filesSlice'
+import { setGeneratedFiles, setFiles } from '../store/filesSlice'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Label } from '../components/ui/label'
+import { programs } from './constants'
+import { semesters } from './constants'
 
 export default function FileUpload() {
   const [file, setFile] = useState(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [filePath, setFilePath] = useState(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const { user } = useSelector((state) => state.user)
   const navigate = useNavigate()
-
   const dispatch = useDispatch()
-  const generatedFiles = useSelector((state) => state.files.generatedFiles)
+  const [reportDetails, setReportDetails] = useState({
+    collegeName: 'COLLEGE OF COMPUTING SCIENCES & INFORMATION TECHNOLOGY',
+    program: '',
+    batch: '',
+    semester: ''
+  })
 
-  console.log("generatedFiles => ", generatedFiles);
-  
+  const isAdmin = user && user.role === 'admin'
 
-  const onDrop = useCallback((acceptedFiles) => {
-    const selectedFile = acceptedFiles[0]
-    if (selectedFile) {
-      if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-        setFile(selectedFile)
-        setFilePath(null) // Reset file path when new file is selected
-      } else {
-        toast.error('Please upload only .xlsx Excel files')
-      }
+  const batchRegex = /^\d{4}-\d{2}$/;
+
+  const onDrop = useCallback(acceptedFiles => {
+    if (acceptedFiles.length > 0) {
+      setFile(acceptedFiles[0])
     }
   }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls']
     },
-    multiple: false
+    maxFiles: 1
   })
-
-  const handleUpload = async () => {
-    if (!file) {
-      toast.error('Please select a file first')
-      return
-    }
-
-    setIsUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-
-    try {
-      const response = await axios.post('http://localhost:8000/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
-      })
-
-      console.log("response => ", response)
-
-      console.log("response => ", response.data.filePath)
-      setFilePath(response.data.filePath)
-      toast.success('File uploaded successfully')
-    } catch (error) {
-      toast.error(`Upload failed: ${error.response?.data?.error || error.message}`)
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  const handleAnalysis = async () => {
-    if (!file) {
-      toast.error('Please select a file first')
-      return
-    }
-    console.log("file => ", file)
-    setIsAnalyzing(true)
-    const formData = new FormData()
-    formData.append('file', file)
-
-    try {
-      // First upload the file
-      const uploadResponse = await axios.post('http://localhost:8000/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
-
-      console.log("uploadResponse => ", uploadResponse)
-
-      if (uploadResponse.data.filePath) {
-        // Then send the file path for analysis
-        const analysisResponse = await axios.post('http://localhost:5000/analyze', {
-          file_path: uploadResponse.data.filePath
-        }, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-
-        console.log('Analysis response:', analysisResponse.data)
-        
-        if (analysisResponse.data) {
-          toast.success('Analysis completed successfully')
-          dispatch(setGeneratedFiles(analysisResponse.data.generated_files || []))
-          navigate('/results', { 
-            state: { 
-              result: analysisResponse.data.result || [],
-              generated_files: analysisResponse.data.generated_files || []
-            }
-          })
-        }
-      }
-    } catch (error) {
-      console.error('Error during analysis:', error)
-      toast.error(error.response?.data?.error || 'Failed to analyze file')
-    } finally {
-      setIsAnalyzing(false)
-    }
-  }
 
   const removeFile = () => {
     setFile(null)
-    setFilePath(null)
   }
 
+  const handleprogramChange = (value) => {
+    setReportDetails(prev => ({
+      ...prev,
+      program: value
+    }))
+  }
+
+  const handlesemesterChange = (value) => {
+    setReportDetails(prev => ({
+      ...prev,
+      semester: value
+    }))
+  }
+  const handleProcessFile = async () => {
+    if (!file) {
+      toast.error('Please select a file first')
+      return
+    }
+
+    if (!Object.values(reportDetails).every(value => value)) {
+      toast.error('Please fill in all report details')
+      return
+    }
+
+    setIsProcessing(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const checkFileResponse = await axios.post('http://localhost:8000/api/files/check-file/', {
+        ...reportDetails
+      })
+      console.log("step 1 cleared")
+
+      console.log(checkFileResponse);
+
+      if (checkFileResponse.data.success) {
+        const uploadResponse = await axios.post('http://localhost:8000/api/files/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        })
+
+        console.log("step 2 cleared");
+
+        console.log("uploadResponse => ", uploadResponse);
+
+        if (uploadResponse.data.filePath) {
+          const analysisResponse = await axios.post('http://localhost:5000/analyze', {
+            file_path: uploadResponse.data.filePath,
+            report_details: reportDetails
+          })
+
+          if (analysisResponse.data) {
+            toast.success('Analysis completed successfully')
+
+            await axios.post('http://localhost:8000/api/files/save-file', {
+              ...reportDetails,
+              result_path: analysisResponse.data.generated_files || []
+            })
+
+
+
+            // Update both files and generatedFiles in the store
+            dispatch(setGeneratedFiles(analysisResponse.data.generated_files || []))
+            // Refresh the files list
+            const filesResponse = await axios.get('http://localhost:8000/api/files/get-files')
+            dispatch(setFiles(filesResponse.data.files))
+
+            navigate('/results', {
+              state: {
+                result: analysisResponse.data.result || [],
+                generated_files: analysisResponse.data.generated_files || []
+              }
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Process failed:', error)
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to process file')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Not Authorized</CardTitle>
+            <CardDescription>
+              You are not authorized to view this page, kindly go to some other page
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button
+              onClick={() => navigate('/')}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Go to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   return (
-    <div className="container max-w-2xl mx-auto py-12 px-4">
-      <div className="flex flex-col items-center space-y-6">
-        <h2 className="text-2xl font-bold text-center">Upload Excel File for Analysis</h2>
-        
-        <div 
-          {...getRootProps()} 
-          className={`w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-            ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary'}`}
-        >
-          <input {...getInputProps()} />
-          <div className="flex flex-col items-center space-y-4">
-            <Upload className="h-12 w-12 text-muted-foreground" />
-            {isDragActive ? (
-              <p className="text-lg">Drop the Excel file here</p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-lg">Drag & drop an Excel file here, or click to select</p>
-                <p className="text-sm text-muted-foreground">Supports .xlsx files only</p>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Upload Result File</CardTitle>
+          <CardDescription>
+            Upload your Excel file containing student results
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Report Details Form */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Report Details</h3>
+              <div className="space-y-4">
+                {/* College Name and Program (Editable) */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">College Name</label>
+                  <input
+                    type="text"
+                    value={reportDetails.collegeName}
+                    onChange={(e) => setReportDetails(prev => ({
+                      ...prev,
+                      collegeName: e.target.value
+                    }))}
+                    className="w-full p-2 border rounded-md bg-background"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="program">Program</Label>
+                  <Select onValueChange={handleprogramChange} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your program" />
+                    </SelectTrigger>
+                    <SelectContent className="overflow-y-auto max-h-52 md:max-h-80 lg:max-h-80">
+                      {programs.map((program) => (
+                        <SelectItem key={program.value} value={program.value}>
+                          {program.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className='flex gap-2'>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Batch</label>
+                    <input
+                      type="text"
+                      placeholder="2021-22"
+                      value={reportDetails.batch}
+                      onChange={(e) => setReportDetails(prev => ({
+                        ...prev,
+                        batch: e.target.value
+                      }))}
+                      className="w-full p-2 border rounded-md bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2 w-full">
+                    <Label htmlFor="semester">Semester</Label>
+                    <Select onValueChange={handlesemesterChange} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your Semester" />
+                      </SelectTrigger>
+                      <SelectContent className="overflow-y-auto max-h-52 md:max-h-80 lg:max-h-80">
+                        {semesters.map((semester) => (
+                          <SelectItem key={semester.value} value={semester.value}>
+                            {semester.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* File Upload Area */}
+            <div
+              {...getRootProps()}
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+                  ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}
+                  hover:border-primary hover:bg-primary/5`}
+            >
+              <input {...getInputProps()} />
+              <div className="flex flex-col items-center gap-2">
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                {isDragActive ? (
+                  <p>Drop the file here...</p>
+                ) : (
+                  <>
+                    <p className="font-medium">Drag & drop file here or click to select</p>
+                    <p className="text-sm text-muted-foreground">Supports Excel files (.xlsx, .xls)</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Selected File Display */}
+            {file && (
+              <div className="flex items-center justify-between w-full p-4 border rounded-lg bg-secondary/50">
+                <div className="flex items-center space-x-4">
+                  <FileSpreadsheet className="h-8 w-8 text-primary" />
+                  <span className="font-medium truncate max-w-[200px]">{file.name}</span>
+                </div>
+                <Button variant="ghost" size="icon" onClick={removeFile}>
+                  <X className="h-5 w-5" />
+                </Button>
               </div>
             )}
-          </div>
-        </div>
 
-        {file && (
-          <div className="flex items-center justify-between w-full p-4 border rounded-lg bg-secondary/50">
-            <div className="flex items-center space-x-4">
-              <FileSpreadsheet className="h-8 w-8 text-primary" />
-              <span className="font-medium truncate max-w-[200px]">{file.name}</span>
-            </div>
-            <Button variant="ghost" size="icon" onClick={removeFile}>
-              <X className="h-5 w-5" />
+            {/* Process Button */}
+            <Button
+              className="w-full"
+              onClick={handleProcessFile}
+              disabled={!file || isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload and Analyze
+                </>
+              )}
             </Button>
           </div>
-        )}
-
-        <div className="flex gap-4 w-full max-w-xs">
-          <Button 
-            className="flex-1" 
-            onClick={handleUpload} 
-            disabled={!file || isUploading}
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              'Upload'
-            )}
-          </Button>
-
-          <Button 
-            className="flex-1" 
-            onClick={handleAnalysis} 
-            disabled={!filePath || isAnalyzing}
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              'Analyze'
-            )}
-          </Button>
-        </div>
-
-        {filePath && (
-          <div className="w-full p-4 border rounded-lg bg-secondary/20">
-            <p className="text-sm text-muted-foreground break-all">
-              File path: {filePath}
-            </p>
-          </div>
-        )}
-      </div>
+        </CardContent>
+        <CardFooter>
+          {/* Keep all your existing footer content */}
+          {/* Remove only the ThemeToggle component if it exists */}
+        </CardFooter>
+      </Card>
     </div>
   )
 } 
